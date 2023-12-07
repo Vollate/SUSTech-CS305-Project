@@ -1,6 +1,8 @@
 class http_header:
     def __init__(self, raw_header=None) -> None:
-        self.fields = {} if raw_header is None else self.parse_header(raw_header)
+        self.fields = {}
+        if raw_header is not None:
+            self.fields = self.parse_header(raw_header)
 
     def parse_header(self, raw_header):
         headers = {}
@@ -12,40 +14,52 @@ class http_header:
         return headers
 
     def to_raw_data(self):
-        return (
-            "\r\n".join(f"{key}: {value}" for key, value in self.fields.items())
-            + "\r\n\r\n"
-        )
+        return "\r\n".join(f"{key}: {value}" for key, value in self.fields.items()) + "\r\n\r\n"
 
-
-class http_packet:
-    def __init__(self, raw_data=None, header=None, body=None) -> None:
-        self.header = header if header is not None else http_header()
-        self.body = body
+class http_request:
+    def __init__(self, raw_data) -> None:
         self.raw_data = raw_data
-        if raw_data:
-            self.parse_raw_data(raw_data)
+        self.method = None
+        self.url = None
+        self.http_version = None
+        self.header = http_header()
+        self.body = None
+        self.parse_raw_data()
 
-    def parse_raw_data(self, raw_data):
-        # Split the raw data into header and body
-        parts = raw_data.split("\r\n\r\n", 1)
+    def parse_raw_data(self):
+        parts = self.raw_data.split("\r\n\r\n", 1)
+        header_body = parts[0].split("\r\n", 1)
+        request_line = header_body[0]
+        self.method, self.url, self.http_version = request_line.split(' ', 2)
+        self.header = http_header(header_body[1])
         if len(parts) == 2:
-            self.header = http_header(parts[0])
             self.body = parts[1]
+class http_response:
+    def __init__(self, status_code, status_text, headers, body):
+        self.status_code = status_code
+        self.status_text = status_text
+        self.headers = headers
+        self.body = body
 
     def to_raw_data(self):
-        # Convert the packet back to raw data
-        header_raw_data = self.header.to_raw_data()
-        return header_raw_data + self.body if self.body else header_raw_data
+        header_raw_data = self.headers.to_raw_data()
+        return "HTTP/1.1 {} {}\r\n".format(self.status_code,
+                                           self.status_text) + header_raw_data + self.body if self.body else header_raw_data
 
 
-def parse_http(data) -> http_packet:
-    return http_packet(raw_data=data)
+def parse_request(data) -> http_request:
+    return http_request(data)
 
 
 def build_response(status_code, status_text, headers, body):
     header = http_header()
-    header.fields["HTTP/1.1"] = f"{status_code} {status_text}"
     for key, value in headers.items():
         header.fields[key] = value
-    return http_packet(header=header, body=body)
+    return http_response(status_code, status_text, header, body)
+
+
+def build_header(header_set):
+    header = http_header()
+    for key, value in header_set.items():
+        header.fields[key] = value
+    return header
