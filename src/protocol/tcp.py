@@ -4,16 +4,26 @@ import threading
 
 class TCP_Server:
     def __init__(self, ip, port):
-        return  # TODO
+        self.ip = ip
+        self.port = port
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.conn = None
+        self.addr = None
 
     def start(self):
-        return  # TODO
+        self.sock.bind((self.ip, self.port))
+        self.sock.listen(1)
+        self.conn, self.addr = self.sock.accept()
 
     def stop(self):
-        return  # TODO
+        if self.conn:
+            self.conn.close()
+        self.sock.close()
 
     def recv(self) -> str:
-        return ''
+        if self.conn:
+            return self.conn.recv(1024).decode()
 
     def send(self, msg):
-        return
+        if self.conn:
+            self.conn.send(msg.encode())
