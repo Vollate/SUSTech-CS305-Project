@@ -16,6 +16,7 @@ class http_header:
     def to_raw_data(self):
         return "\r\n".join(f"{key}: {value}" for key, value in self.fields.items()) + "\r\n\r\n"
 
+
 class http_request:
     def __init__(self, raw_data) -> None:
         self.raw_data = raw_data
@@ -34,6 +35,8 @@ class http_request:
         self.header = http_header(header_body[1])
         if len(parts) == 2:
             self.body = parts[1]
+
+
 class http_response:
     def __init__(self, status_code, status_text, headers, body):
         self.status_code = status_code
