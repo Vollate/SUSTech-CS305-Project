@@ -21,8 +21,9 @@ class TCP_Server:
         self.sock.close()
 
     def recv(self) -> str:
-        if self.conn:
-            return self.conn.recv(1024).decode()
+        while not self.conn:
+            pass
+        return self.conn.recv(1024).decode()
 
     def send(self, msg):
         if self.conn:

@@ -1,13 +1,15 @@
 import socket
 import threading
 import time
-from protocol import tcp
+from src.protocol import tcp
 
 # 测试服务器功能
+
+
 def test_server():
     # 创建服务器实例
     server = tcp.TCP_Server('127.0.0.1', 65432)
-    
+
     # 在一个新线程中启动服务器
     server_thread = threading.Thread(target=server.start)
     server_thread.start()
@@ -30,6 +32,7 @@ def test_server():
     client.close()
     server.stop()
     server_thread.join()
+
 
 # 运行测试
 if __name__ == "__main__":
