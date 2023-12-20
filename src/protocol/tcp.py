@@ -27,4 +27,7 @@ class TCP_Server:
 
     def send(self, msg):
         if self.conn:
-            self.conn.send(msg.encode())
+            try:
+                self.conn.send(msg.encode())
+            except BrokenPipeError:
+                print("Connection broken. Unable to send message.")
