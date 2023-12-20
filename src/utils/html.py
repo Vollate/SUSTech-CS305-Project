@@ -9,8 +9,13 @@ class html_render:
     def load_template(self, template_name):
         self.template_name = template_name
 
-    def make_html(self, title, files):
+    def make_main_page(self, title, files):
         file_loader = FileSystemLoader(self.template_path)
         env = Environment(loader=file_loader)
         template = env.get_template(self.template_name)
         return template.render(title=title, files=files)
+    def make_login(self):
+        file_loader = FileSystemLoader(self.template_path)
+        env = Environment(loader=file_loader)
+        template = env.get_template("login.html")
+        return template.render()
