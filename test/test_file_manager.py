@@ -22,7 +22,7 @@ class Test_File_Manager:
 
         response = self.file_manager.process(request_text)
         print(response)
-    
+
 if __name__ == "__main__":
     test_file_manager = Test_File_Manager()
     test_file_manager.setup()
