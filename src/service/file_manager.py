@@ -1,8 +1,8 @@
 import os
 import base64
 import json
-from utils import html
-from protocol import http
+from src.utils import html
+from src.protocol import http
 
 class File_Manager:
     def __init__(self):
