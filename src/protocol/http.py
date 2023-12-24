@@ -43,11 +43,11 @@ class http_response:
         self.status_text = status_text
         self.headers = headers
         self.body = body
-
+    
     def to_raw_data(self):
         header_raw_data = self.headers.to_raw_data()
         return "HTTP/1.1 {} {}\r\n".format(self.status_code,
-                                           self.status_text) + header_raw_data + self.body if self.body else header_raw_data
+                                        self.status_text) + header_raw_data + self.body if self.body else header_raw_data 
 
 
 def parse_request(data) -> http_request:

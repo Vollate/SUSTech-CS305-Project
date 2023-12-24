@@ -23,11 +23,11 @@ class TCP_Server:
     def recv(self) -> str:
         while not self.conn:
             pass
-        return self.conn.recv(1024).decode()
+        return self.conn.recv(10240).decode()
 
     def send(self, msg):
         if self.conn:
             try:
-                self.conn.send(msg.encode())
+                self.conn.send(msg)
             except BrokenPipeError:
                 print("Connection broken. Unable to send message.")
