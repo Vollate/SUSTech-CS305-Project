@@ -38,27 +38,34 @@ class http_request:
 
 
 class http_response:
-    def __init__(self, status_code, status_text, headers, body):
+    def __init__(self, status_code, status_text, headers, body=None):
         self.status_code = status_code
         self.status_text = status_text
         self.headers = headers
         self.body = body
-    
+
+    def encode(self):
+        return self.to_raw_data().encode()
+
     def to_raw_data(self):
         header_raw_data = self.headers.to_raw_data()
+        if self.body:
+            return "HTTP/1.1 {} {}\r\n".format(self.status_code,
+                                           self.status_text) + header_raw_data+self.body
         return "HTTP/1.1 {} {}\r\n".format(self.status_code,
-                                        self.status_text) + header_raw_data + self.body if self.body else header_raw_data 
+                                           self.status_text) + header_raw_data
 
 
 def parse_request(data) -> http_request:
     return http_request(data)
 
 
-def build_response(status_code, status_text, headers, body):
+def build_response(status_code, status_text, headers, body=None):
     header = http_header()
     for key, value in headers.items():
         header.fields[key] = value
     return http_response(status_code, status_text, header, body)
+
 
 # header
 def build_header(header_set):

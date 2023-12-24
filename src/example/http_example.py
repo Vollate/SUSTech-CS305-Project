@@ -11,7 +11,7 @@ eg_fields["Content-Type"] = "text/html"
 eg_fields["Keep-Alive"] = "timeout=15, max=100"
 packet = http.build_response(200, 'OK', eg_fields, out)
 
-print(packet.to_raw_data())
+print(packet.encode())
 
 raw_request = "POST /submit-form HTTP/1.1\r\n" \
                "Host: www.example.com\r\n" \

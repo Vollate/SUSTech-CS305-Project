@@ -7,6 +7,7 @@ class TCP_Server:
         self.ip = ip
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.conn = None
         self.addr = None
 
@@ -23,11 +24,19 @@ class TCP_Server:
     def recv(self) -> str:
         while not self.conn:
             pass
-        return self.conn.recv(10240).decode()
+        return self.conn.recv(1024).decode()
 
     def send(self, msg):
         if self.conn:
             try:
                 self.conn.send(msg)
+            except BrokenPipeError:
+                print("Connection broken. Unable to send message.")
+
+    def send_with_attach(self, msg, at):
+        if self.conn:
+            try:
+                self.conn.send(msg)
+                self.conn.send(at)
             except BrokenPipeError:
                 print("Connection broken. Unable to send message.")
