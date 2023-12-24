@@ -46,7 +46,7 @@ class File_Manager:
 
         try:
             if self.username is None:
-                print("Not loginned")
+                print("Not login, check cookie")
                 auth_header = request.header.fields.get('Authorization')
                 if auth_header is not None:
                     if self.authorize(request.header.fields.get('Authorization')):
@@ -62,7 +62,7 @@ class File_Manager:
                     if not os.path.exists(dir_path):
                         os.mkdir(dir_path)
                     files_and_dirs = os.listdir(dir_path)
-                    formatted_list = [{"path": os.path.join(dir_path, file_or_dir), "name": file_or_dir} for file_or_dir
+                    formatted_list = [{"path": '/' + file_or_dir, "name": file_or_dir} for file_or_dir
                                       in files_and_dirs]
                     out = self.render.make_main_page(self.title + self.username, formatted_list)
                     headers['Content-Type'] = 'text/html'
@@ -74,18 +74,18 @@ class File_Manager:
                     headers['Content-Length'] = len(out)
                     headers['WWW-Authenticate'] = 'Basic realm="Authorization Required"'
                     return http.build_response(401, 'Unauthorized', headers, out)
-
-            file_path = os.path.join(self.base_path, 'data', request.url.strip('/'))
+            file_path = os.path.join(self.base_path, 'data/{}'.format(self.username), request.url.strip('/'))
             if request.url.strip('/') == '':
                 file_path = os.path.join(self.base_path, 'data', self.username)
-            if request.url.split('/')[0] != self.username and request.url.strip('/') != 'favicon.ico':
-                return http.build_response(403, 'Forbidden', headers)
+            # if request.url.split('/')[0] != self.username and request.url.strip('/') != 'favicon.ico':
+            #     return http.build_response(403, 'Forbidden', headers)
 
             if request.method == 'GET':
                 # dir
                 if os.path.isdir(file_path):
-                    files_and_dirs = os.listdir(dir_path)
-                    formatted_list = [{"path": os.path.join(dir_path, file_or_dir), "name": file_or_dir} for file_or_dir
+                    files_and_dirs = os.listdir(file_path)
+                    formatted_list = [{"path": os.path.join(file_path, file_or_dir), "name": file_or_dir} for
+                                      file_or_dir
                                       in files_and_dirs]
                     out = self.render.make_main_page(self.title + self.username, formatted_list)
                     headers['Content-Type'] = 'text/html'
@@ -107,7 +107,7 @@ class File_Manager:
                     headers['Content-Type'] = content_type
                     headers['Content-Length'] = len(file_content)
                     headers['Content-Disposition'] = content_disposition
-                    # headers['Connection'] = connection
+                    headers['Connection'] = connection
 
                     return (http.build_response(200, 'OK', headers), file_content)
 

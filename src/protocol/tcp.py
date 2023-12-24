@@ -24,7 +24,10 @@ class TCP_Server:
     def recv(self) -> str:
         while not self.conn:
             pass
-        return self.conn.recv(1024).decode()
+        recv_data = ''
+        while recv_data == '':
+            recv_data = self.conn.recv(10240).decode()
+        return recv_data
 
     def send(self, msg):
         if self.conn:
