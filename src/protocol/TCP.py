@@ -6,6 +6,7 @@ class TCPServer:
         self.host = host
         self.port = port
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((self.host, self.port))
         self.server_socket.listen(5)
         self.thread_pool = thread_pool
@@ -13,7 +14,7 @@ class TCPServer:
         self.running = True
 
     def handle_client(self, client_socket):
-        client_socket.settimeout(5.0)
+        # client_socket.settimeout(5.0)
         with client_socket:
             while True:
                 try:
@@ -45,6 +46,5 @@ class TCPServer:
     def stop(self):
         self.running = False
         print("tcp server stop")
-        socket
         self.server_socket.close()
         self.thread_pool.stop()

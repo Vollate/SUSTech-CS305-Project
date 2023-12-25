@@ -31,7 +31,6 @@ class File_Manager:
         if username in self.USERS_DB:
             if self.USERS_DB[username] == password:
                 ret_username[0] = username
-                print("Logged in")
                 return True
             else:
                 return False
@@ -40,7 +39,7 @@ class File_Manager:
 
     def process(self, data):
         request = HTTP.parse_request(data)
-        print(request)
+        # print(request)
         headers = {}
 
         try:
