@@ -51,7 +51,6 @@ class File_Manager:
 
     def process(self, data):
         request = HTTP.parse_request(data)
-        # print(request)
         headers = {}
 
         try:
@@ -82,8 +81,8 @@ class File_Manager:
                     return HTTP.build_response(403, 'Forbidden', headers, 'Forbidden')
                 if relative_path is None:
                     return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
-            print(file_path)
-            print(relative_path)
+            # print(file_path)
+            # print(relative_path)
 
             if request.method == 'GET':
                 if file_path.is_dir():

@@ -31,6 +31,7 @@ class http_request:
         parts = self.binary_data.split(b"\r\n\r\n", 1)
         header_body = parts[0].split(b"\r\n", 1)
         request_line = header_body[0].decode()
+        print(request_line)
         self.method, self.url, self.http_version = request_line.split(' ', 2)
         self.header = http_header(header_body[1].decode())
         if len(parts) == 2:

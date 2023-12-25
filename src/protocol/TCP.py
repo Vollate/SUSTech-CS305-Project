@@ -1,6 +1,13 @@
 import socket
 
 
+class HTTPStatus:
+    def __init__(self):
+        self.receive_partially = False
+        self.current_frame_count = 0
+        self.total_frame_count = 0
+
+
 class TCPServer:
     def __init__(self, host, port, thread_pool, file_manager):
         self.host = host

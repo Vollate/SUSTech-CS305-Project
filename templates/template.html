@@ -3,17 +3,24 @@
 
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>{{title}}</title>
+    <title>Dragon Server</title>
 </head>
 
 <body>
-<h1>{{title}}</h1>
+<h1>Current Path: {{title}}</h1>
+<p>If you are along ...</p>
 <hr>
 <ul>
     {% for file in files %}
-    <li><a href="{{ file.path }}">{{ file.name }}</a> <a href="/delete?path={{title}}file.path">Delete</a> </li>
+    <li style="display: flex; justify-content: space-between; align-items: center;">
+        <a href="{{ file.path }}">{{ file.name }}</a>
+        <a href="/delete?path={{ file.path }}">Delete</a>
+        <p></p>
+    </li>
     {% endfor %}
 </ul>
+
+
 <hr>
 </body>
 <form method="post" enctype="multipart/form-data" id="uploadForm" onsubmit="setActionWithFilename()">
@@ -21,7 +28,7 @@
         <label for="file">Choose file to upload</label>
         <br>
         <br>
-        <input type="file" id="file" name="file" multiple onchange="updateFilename()" />
+        <input type="file" id="file" name="file" multiple/>
     </div>
     <br>
     <div>
@@ -29,17 +36,11 @@
     </div>
 </form>
 <script>
-    function updateFilename() {
-        var fileInput = document.getElementById('file');
-        var filename = fileInput.files[0].name;
-        fileInput.setAttribute('data-filename', filename);
-    }
-
     function setActionWithFilename() {
         var form = document.getElementById('uploadForm');
         var fileInput = document.getElementById('file');
         var filename = fileInput.getAttribute('data-filename');
-        form.action = '{{title}}' + encodeURIComponent(filename);
+        form.action = '/upload?path={{title}}' + '/';
     }
 </script>
 
