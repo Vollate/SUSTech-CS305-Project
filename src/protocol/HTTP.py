@@ -18,23 +18,26 @@ class http_header:
 
 
 class http_request:
-    def __init__(self, raw_data) -> None:
-        self.raw_data = raw_data
+    def __init__(self, binary_data) -> None:
+        self.binary_data = binary_data
         self.method = None
         self.url = None
         self.http_version = None
         self.header = http_header()
         self.body = None
-        self.parse_raw_data()
+        self.parse_binary_data()
 
-    def parse_raw_data(self):
-        parts = self.raw_data.split("\r\n\r\n", 1)
-        header_body = parts[0].split("\r\n", 1)
-        request_line = header_body[0]
+    def parse_binary_data(self):
+        parts = self.binary_data.split(b"\r\n\r\n", 1)
+        header_body = parts[0].split(b"\r\n", 1)
+        request_line = header_body[0].decode()
         self.method, self.url, self.http_version = request_line.split(' ', 2)
-        self.header = http_header(header_body[1])
+        self.header = http_header(header_body[1].decode())
         if len(parts) == 2:
-            self.body = parts[1]
+            if self.header.fields.get("Content-Type") == 'text/html':
+                self.body = parts[1].decode()
+            else:
+                self.body = parts[1]
 
 
 class http_response:
@@ -51,7 +54,7 @@ class http_response:
         header_raw_data = self.headers.to_raw_data()
         if self.body:
             return "HTTP/1.1 {} {}\r\n".format(self.status_code,
-                                           self.status_text) + header_raw_data+self.body
+                                               self.status_text) + header_raw_data + self.body
         return "HTTP/1.1 {} {}\r\n".format(self.status_code,
                                            self.status_text) + header_raw_data
 

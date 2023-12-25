@@ -16,13 +16,31 @@
 </ul>
 <hr>
 </body>
-<form method="post" enctype="multipart/form-data">
+<form method="post" enctype="multipart/form-data" id="uploadForm" onsubmit="setActionWithFilename()">
     <div>
         <label for="file">Choose file to upload</label>
-        <input type="file" id="file" name="file" multiple />
+        <br>
+        <br>
+        <input type="file" id="file" name="file" multiple onchange="updateFilename()" />
     </div>
+    <br>
     <div>
-        <button>Submit</button>
+        <button type="submit">Submit</button>
     </div>
 </form>
+<script>
+    function updateFilename() {
+        var fileInput = document.getElementById('file');
+        var filename = fileInput.files[0].name;
+        fileInput.setAttribute('data-filename', filename);
+    }
+
+    function setActionWithFilename() {
+        var form = document.getElementById('uploadForm');
+        var fileInput = document.getElementById('file');
+        var filename = fileInput.getAttribute('data-filename');
+        form.action = '{{title}}' + encodeURIComponent(filename);
+    }
+</script>
+
 </html>

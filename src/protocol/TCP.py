@@ -21,7 +21,7 @@ class TCPServer:
                     data = client_socket.recv(1024)
                     if not data:
                         break
-                    send_message = self.file_manager.process(data.decode())
+                    send_message = self.file_manager.process(data)
                     if type(send_message) is tuple:
                         client_socket.send(send_message[0].encode())
                         client_socket.send(send_message[1])
@@ -36,10 +36,10 @@ class TCPServer:
 
     def run(self):
         while self.running:
-            # try:
-            client_socket, addr = self.server_socket.accept()
-            # except OSError:
-            #     break
+            try:
+                client_socket, addr = self.server_socket.accept()
+            except OSError:
+                break
             print(f"Connected to {addr}")
             self.thread_pool.submit(lambda: self.handle_client(client_socket))
 
