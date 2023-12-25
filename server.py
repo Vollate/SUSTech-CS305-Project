@@ -13,7 +13,7 @@ argv = parser.parse_args()
 SERVER_STATUS = True
 
 base_path = Path(__file__).resolve().parent
-fm = FileManager.file_manager(base_path)
+fm = FileManager.File_Manager(base_path)
 tcp_server = TCP.TCPServer(argv.i, argv.p, ThreadPool.ThreadPool(10), fm)
 
 

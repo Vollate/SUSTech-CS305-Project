@@ -5,11 +5,10 @@ from src.utils import HTML
 from src.protocol import HTTP
 
 
-class file_manager:
+class File_Manager:
     def __init__(self, base_path):
         self.title = "File Manager: "
         self.base_path = Path(base_path)
-        self.username = None
         self.USERS_DB = self.load_user_db()
         self.render = HTML.html_render("templates", "template.html")
 
@@ -21,7 +20,7 @@ class file_manager:
         except FileNotFoundError:
             return {}
 
-    def authorize(self, auth_header):
+    def authorize(self, auth_header, ret_username):
         if auth_header is None:
             return False
         if not auth_header.startswith('Basic '):
@@ -31,7 +30,7 @@ class file_manager:
         username, password = decoded_credentials.split(':', 1)
         if username in self.USERS_DB:
             if self.USERS_DB[username] == password:
-                self.username = username
+                ret_username[0] = username
                 print("Logged in")
                 return True
             else:
@@ -45,18 +44,18 @@ class file_manager:
         headers = {}
 
         try:
-            if self.username is None:
-                auth_header = request.header.fields.get('Authorization')
-                if auth_header and self.authorize(auth_header):
-                    pass
-                else:
-                    out = self.render.make_login()
-                    headers['Content-Type'] = 'text/html'
-                    headers['Content-Length'] = str(len(out))
-                    headers['WWW-Authenticate'] = 'Basic realm="Authorization Required"'
-                    return HTTP.build_response(401, 'Unauthorized', headers, out)
+            username = ['']
+            auth_header = request.header.fields.get('Authorization')
+            if auth_header and self.authorize(auth_header, username):
+                pass
+            else:
+                out = self.render.make_login()
+                headers['Content-Type'] = 'text/html'
+                headers['Content-Length'] = str(len(out))
+                headers['WWW-Authenticate'] = 'Basic realm="Authorization Required"'
+                return HTTP.build_response(401, 'Unauthorized', headers, out)
 
-            dir_path = self.base_path / 'data' / self.username
+            dir_path = self.base_path / 'data' / username[0]
             if not dir_path.exists():
                 dir_path.mkdir()
 
@@ -66,12 +65,12 @@ class file_manager:
                 file_path = dir_path
             else:
                 file_path = dir_path / request.url.strip('/')
-
+            print(file_path)
             if request.method == 'GET':
                 if file_path.is_dir():
                     files_and_dirs = list(file_path.iterdir())
                     formatted_list = [{"path": '/' + f.name, "name": f.name} for f in files_and_dirs]
-                    out = self.render.make_main_page(self.title + self.username, formatted_list)
+                    out = self.render.make_main_page(self.title + username[0], formatted_list)
                     headers['Content-Type'] = 'text/html'
                     headers['Content-Length'] = str(len(out))
                     return HTTP.build_response(200, 'OK', headers, out)
@@ -85,7 +84,7 @@ class file_manager:
                     headers['Content-Type'] = content_type
                     headers['Content-Length'] = str(len(file_content))
                     headers['Content-Disposition'] = content_disposition
-                    return (HTTP.build_response(200, 'OK', headers), file_content)
+                    return HTTP.build_response(200, 'OK', headers), file_content
                 else:
                     return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
 

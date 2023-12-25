@@ -35,15 +35,16 @@ class TCPServer:
 
     def run(self):
         while self.running:
-            try:
-                client_socket, addr = self.server_socket.accept()
-            except OSError:
-                break
+            # try:
+            client_socket, addr = self.server_socket.accept()
+            # except OSError:
+            #     break
             print(f"Connected to {addr}")
             self.thread_pool.submit(lambda: self.handle_client(client_socket))
 
     def stop(self):
         self.running = False
         print("tcp server stop")
+        socket
         self.server_socket.close()
         self.thread_pool.stop()
