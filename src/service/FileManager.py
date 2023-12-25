@@ -36,6 +36,18 @@ class File_Manager:
                 return False
         else:
             return False
+    
+    def find_relative_path_to_target_folder(self, path, target_folder_name):
+        path = Path(path).resolve()
+        original_path = path
+        while path.name != target_folder_name:
+            if path.name == 'data':
+                return True, None
+            if path.parent == path:
+                return False, None
+            path = path.parent
+        relative_path = original_path.relative_to(path.parent)
+        return False, relative_path
 
     def process(self, data):
         request = HTTP.parse_request(data)
@@ -54,22 +66,33 @@ class File_Manager:
                 headers['WWW-Authenticate'] = 'Basic realm="Authorization Required"'
                 return HTTP.build_response(401, 'Unauthorized', headers, out)
 
-            dir_path = self.base_path / 'data' / username[0]
-            if not dir_path.exists():
-                dir_path.mkdir()
+            request.url = request.url.strip('/')
+            dir_path = self.base_path / 'data'
+            is_root = request.url == '' or request.url == username[0]
+            if not (dir_path / username[0]).exists():
+                (dir_path / username[0]).mkdir()
 
-            if request.url.strip('/') == 'favicon.ico':
-                file_path = self.base_path / 'data' / request.url.strip('/')
-            elif request.url.strip('/') == '':
-                file_path = dir_path
+            if is_root:
+                file_path = dir_path / username[0]
+                relative_path = Path(username[0])
             else:
-                file_path = dir_path / request.url.strip('/')
+                file_path = dir_path / request.url
+                is_forbidden, relative_path = self.find_relative_path_to_target_folder(file_path, username[0])
+                if is_forbidden:
+                    return HTTP.build_response(403, 'Forbidden', headers, 'Forbidden')
+                if relative_path is None:
+                    return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
             print(file_path)
+            print(relative_path)
+
             if request.method == 'GET':
                 if file_path.is_dir():
                     files_and_dirs = list(file_path.iterdir())
-                    formatted_list = [{"path": '/' + f.name, "name": f.name} for f in files_and_dirs]
-                    out = self.render.make_main_page(self.title + username[0], formatted_list)
+                    formatted_list = [{"path": str(relative_path) + '/' + f.name, "name": f.name} for f in files_and_dirs]
+                    if not is_root:
+                        formatted_list.append({"path": str(relative_path), "name": '.'})
+                        formatted_list.append({"path": str(relative_path.parent), "name": '..'})
+                    out = self.render.make_main_page(self.title + str(relative_path), formatted_list)
                     headers['Content-Type'] = 'text/html'
                     headers['Content-Length'] = str(len(out))
                     return HTTP.build_response(200, 'OK', headers, out)
@@ -88,7 +111,7 @@ class File_Manager:
                     return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
 
             elif request.method == 'POST':
-                post_type = request.header.fields.get('Post-Type')
+                post_type = request.header.fields.get('')
                 if post_type == 'Upload':
                     with file_path.open('w') as file:
                         file.write(request.body)
