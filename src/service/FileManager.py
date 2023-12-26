@@ -1,5 +1,6 @@
 import base64
 import json
+import shutil
 from pathlib import Path
 from src.utils import HTML
 from src.protocol import HTTP
@@ -67,24 +68,23 @@ class File_Manager:
 
             request.url = request.url.strip('/')
             dir_path = self.base_path / 'data'
-            is_root = request.url == '' or request.url == username[0]
-            if not (dir_path / username[0]).exists():
-                (dir_path / username[0]).mkdir()
-
-            if is_root:
-                file_path = dir_path / username[0]
-                relative_path = Path(username[0])
-            else:
-                file_path = dir_path / request.url
-                is_forbidden, relative_path = self.find_relative_path_to_target_folder(file_path, username[0])
-                if is_forbidden:
-                    return HTTP.build_response(403, 'Forbidden', headers, 'Forbidden')
-                if relative_path is None:
-                    return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
-            # print(file_path)
-            # print(relative_path)
-
             if request.method == 'GET':
+                is_root = request.url == '' or request.url == username[0]
+                if not (dir_path / username[0]).exists():
+                    (dir_path / username[0]).mkdir()
+
+                if is_root:
+                    file_path = dir_path / username[0]
+                    relative_path = Path(username[0])
+                else:
+                    file_path = dir_path / request.url
+                    is_forbidden, relative_path = self.find_relative_path_to_target_folder(file_path, username[0])
+                    if is_forbidden:
+                        return HTTP.build_response(403, 'Forbidden', headers, 'Forbidden')
+                    if relative_path is None:
+                        return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
+                # print(file_path)
+                # print(relative_path)
                 if file_path.is_dir():
                     files_and_dirs = list(file_path.iterdir())
                     formatted_list = [{"path": '/' + str(relative_path) + '/' + f.name, "name": f.name} for f in files_and_dirs]
@@ -108,19 +108,38 @@ class File_Manager:
                     return HTTP.build_response(200, 'OK', headers), file_content
                 else:
                     return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
-
+            
             elif request.method == 'POST':
-                post_type = request.header.fields.get('')
-                if post_type == 'Upload':
+                method, relative_path = request.url.split('?', 1)
+                path_flag ,relative_path = relative_path.strip('=', 1)
+                if path_flag != 'path':
+                    return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
+                relative_path = Path(relative_path)
+
+                file_path = dir_path / relative_path
+                print(str(file_path))
+                print(str(relative_path))
+                is_forbidden, _ = self.find_relative_path_to_target_folder(file_path, username[0])
+                if is_forbidden:
+                    return HTTP.build_response(403, 'Forbidden', headers, 'Forbidden')
+
+                if method == 'upload':
+                    if not request.body:
+                        return HTTP.build_response(400, 'Bad Request', headers, 'No Data to Save')
+                    if file_path.is_dir():
+                        return HTTP.build_response(400, 'Bad Request', headers, 'Invalid File Path')
                     with file_path.open('w') as file:
                         file.write(request.body)
                     return HTTP.build_response(200, 'OK', headers, 'File Saved')
-                elif post_type == 'Delete':
-                    if file_path.exists():
-                        file_path.unlink()
-                        return HTTP.build_response(200, 'OK', headers, 'File Deleted')
-                    else:
+
+                elif method == 'delete':
+                    if not file_path.exists():
                         return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
+                    if file_path.is_dir():
+                        shutil.rmtree(file_path)
+                    else:
+                        file_path.unlink()
+                    return HTTP.build_response(200, 'OK', headers, 'File Deleted')
                 else:
                     return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
 
