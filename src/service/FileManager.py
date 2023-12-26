@@ -111,14 +111,13 @@ class File_Manager:
             
             elif request.method == 'POST':
                 method, relative_path = request.url.split('?', 1)
-                path_flag ,relative_path = relative_path.strip('=', 1)
+                path_flag ,relative_path = relative_path.split('=', 1)
                 if path_flag != 'path':
                     return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
                 relative_path = Path(relative_path)
 
-                file_path = dir_path / relative_path
-                print(str(file_path))
-                print(str(relative_path))
+                file_path = Path(str(dir_path) + str(relative_path))
+
                 is_forbidden, _ = self.find_relative_path_to_target_folder(file_path, username[0])
                 if is_forbidden:
                     return HTTP.build_response(403, 'Forbidden', headers, 'Forbidden')
