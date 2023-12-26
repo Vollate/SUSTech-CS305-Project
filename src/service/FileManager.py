@@ -101,16 +101,21 @@ class File_Manager:
             if request.method == 'GET':
                 
                 LIST_MODE = False
-                if(request.url.contains('?')):
+                if(request.url.find('?') != -1):
                     relative_path, query = request.url.split('?', 1)
-                    if query == 'SUSTech-HTTP=[1]':
+                    relative_path = Path(relative_path)
+                    query, id = query.split('=', 1)
+                    if query == 'SUSTech-HTTP' and id == '1':
                         LIST_MODE = True
-                    elif query == 'SUSTech-HTTP=[0]':
+                    elif query == 'SUSTech-HTTP' and id == '0':
                         LIST_MODE = False
                     else :
-                        return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')       
+                        return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')     
+                    is_root = relative_path.name == '' or relative_path.name == username[0]
+                else:
+                    is_root = request.url == '' or request.url == username[0]
+                    relative_path = Path(request.url)
                 
-                is_root = relative_path.name == '' or relative_path.name == username[0]
                 if not (dir_path / username[0]).exists():
                     (dir_path / username[0]).mkdir()
 
@@ -118,7 +123,7 @@ class File_Manager:
                     file_path = dir_path / username[0]
                     relative_path = Path(username[0])
                 else:
-                    file_path = dir_path / request.url
+                    file_path = dir_path / relative_path
                     is_forbidden, relative_path = find_relative_path_to_target_folder(file_path, username[0])
                     if is_forbidden:
                         return HTTP.build_response(403, 'Forbidden', headers, 'Forbidden')
@@ -132,10 +137,9 @@ class File_Manager:
                     # SUSTech-HTTP
                     if LIST_MODE:
                         formatted_list = [f.name + '/' if f.is_dir() else f.name for f in files_and_dirs]
-                        out = self.render.make_list_page('/' + str(relative_path), formatted_list)
                         headers['Content-Type'] = 'text/html'
-                        headers['Content-Length'] = str(len(out))
-                        return HTTP.build_response(200, 'OK', headers, out)
+                        headers['Content-Length'] = len(str(formatted_list))
+                        return HTTP.build_response(200, 'OK', headers) ,str(formatted_list).encode()
                     else:
                         formatted_list = []
                         if not is_root:
