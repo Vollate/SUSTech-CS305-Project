@@ -17,9 +17,11 @@ class http_header:
         return "\r\n".join(f"{key}: {value}" for key, value in self.fields.items()) + "\r\n\r\n"
 
 
-class http_request:
-    def __init__(self, binary_data) -> None:
+class HTTP_Request:
+    def __init__(self, binary_data=None) -> None:
         self.binary_data = binary_data
+        if binary_data is None:
+            return
         self.method = None
         self.url = None
         self.http_version = None
@@ -60,8 +62,20 @@ class http_response:
                                            self.status_text) + header_raw_data
 
 
-def parse_request(data) -> http_request:
-    return http_request(data)
+class HTTPStatus:
+    def __init__(self):
+        self.receive_partially = False
+        self.request = HTTP_Request()
+        self.current_receive_size = 0
+        self.expect_receive_size = 0
+        self.current_send_size = 0
+        self.expect_send_size = 0
+        self.receive_buffer = b''
+        self.send_buffer = b''
+
+
+def parse_request(data) -> HTTP_Request:
+    return HTTP_Request(data)
 
 
 def build_response(status_code, status_text, headers, body=None):

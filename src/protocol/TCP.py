@@ -1,11 +1,5 @@
 import socket
-
-
-class HTTPStatus:
-    def __init__(self):
-        self.receive_partially = False
-        self.current_frame_count = 0
-        self.total_frame_count = 0
+from src.protocol import HTTP
 
 
 class TCPServer:
@@ -22,14 +16,17 @@ class TCPServer:
 
     def handle_client(self, client_socket):
         # client_socket.settimeout(5.0)
+        status = HTTP.HTTPStatus()
         with client_socket:
             while True:
                 try:
                     data = client_socket.recv(1024)
                     if not data:
                         break
-                    send_message = self.file_manager.process(data)
-                    if type(send_message) is tuple:
+                    send_message = self.file_manager.process(data, status)
+                    if send_message is None:
+                        continue
+                    elif type(send_message) is tuple:
                         client_socket.send(send_message[0].encode())
                         client_socket.send(send_message[1])
                         # print(f"we send response: {send_message[0].encode()}, raw body size: {len(send_message[1])}")

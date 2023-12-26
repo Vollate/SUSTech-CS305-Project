@@ -6,6 +6,19 @@ from src.utils import HTML
 from src.protocol import HTTP
 
 
+def find_relative_path_to_target_folder(path, target_folder_name):
+    path = Path(path).resolve()
+    original_path = path
+    while path.name != target_folder_name:
+        if path.name == 'data':
+            return True, None
+        if path.parent == path:
+            return False, None
+        path = path.parent
+    relative_path = original_path.relative_to(path.parent)
+    return False, relative_path
+
+
 class File_Manager:
     def __init__(self, base_path):
         self.title = "File Manager: "
@@ -37,22 +50,38 @@ class File_Manager:
                 return False
         else:
             return False
-    
-    def find_relative_path_to_target_folder(self, path, target_folder_name):
-        path = Path(path).resolve()
-        original_path = path
-        while path.name != target_folder_name:
-            if path.name == 'data':
-                return True, None
-            if path.parent == path:
-                return False, None
-            path = path.parent
-        relative_path = original_path.relative_to(path.parent)
-        return False, relative_path
 
-    def process(self, data):
-        request = HTTP.parse_request(data)
+    def process(self, data, status: HTTP.HTTPStatus):
         headers = {}
+        request = HTTP.HTTP_Request()
+        if status.receive_partially:
+            status.current_receive_size += len(data)
+            status.receive_buffer += data
+            print(
+                f"receive partially: {status.current_receive_size}/{status.expect_receive_size}, length of file {len(status.receive_buffer)}")
+            if status.current_receive_size < status.expect_receive_size:
+                return None
+            elif status.current_receive_size == status.expect_receive_size:
+                request = status.request
+                request.body = status.receive_buffer
+                print(request.header.fields)
+                status.receive_partially = False
+                pass
+            else:
+                print("receive too much data, discard")
+                request.body = status.receive_buffer
+                status.receive_partially = False
+                return None
+        else:
+            request = HTTP.parse_request(data)
+            length = request.header.fields.get('Content-Length')
+            if not (length is None) and int(length) > len(request.body):
+                status.receive_partially = True
+                status.request = request
+                status.current_receive_size = len(request.body)
+                status.expect_receive_size = int(length)
+                status.receive_buffer = data
+                return None
 
         try:
             username = ['']
@@ -78,7 +107,7 @@ class File_Manager:
                     relative_path = Path(username[0])
                 else:
                     file_path = dir_path / request.url
-                    is_forbidden, relative_path = self.find_relative_path_to_target_folder(file_path, username[0])
+                    is_forbidden, relative_path = find_relative_path_to_target_folder(file_path, username[0])
                     if is_forbidden:
                         return HTTP.build_response(403, 'Forbidden', headers, 'Forbidden')
                     if relative_path is None:
@@ -91,7 +120,8 @@ class File_Manager:
                     if not is_root:
                         formatted_list.append({"path": '/' + str(relative_path), "name": '.'})
                         formatted_list.append({"path": '/' + str(relative_path.parent), "name": '..'})
-                    formatted_list += [{"path": '/' + str(relative_path) + '/' + f.name, "name": f.name} for f in files_and_dirs]
+                    formatted_list += [{"path": '/' + str(relative_path) + '/' + f.name, "name": f.name} for f in
+                                       files_and_dirs]
                     out = self.render.make_main_page('/' + str(relative_path), formatted_list)
                     headers['Content-Type'] = 'text/html'
                     headers['Content-Length'] = str(len(out))
@@ -109,17 +139,17 @@ class File_Manager:
                     return HTTP.build_response(200, 'OK', headers), file_content
                 else:
                     return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
-            
+
             elif request.method == 'POST':
                 method, relative_path = request.url.split('?', 1)
-                path_flag ,relative_path = relative_path.split('=', 1)
+                path_flag, relative_path = relative_path.split('=', 1)
                 if path_flag != 'path':
                     return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
                 relative_path = Path(relative_path)
 
                 file_path = Path(str(dir_path) + str(relative_path))
 
-                is_forbidden, _ = self.find_relative_path_to_target_folder(file_path, username[0])
+                is_forbidden, _ = find_relative_path_to_target_folder(file_path, username[0])
                 if is_forbidden:
                     return HTTP.build_response(403, 'Forbidden', headers, 'Forbidden')
 
@@ -146,7 +176,8 @@ class File_Manager:
                     if not (file_path.name == username[0]):
                         formatted_list.append({"path":  str(relative_path), "name": '.'})
                         formatted_list.append({"path": str(relative_path.parent), "name": '..'})
-                    formatted_list += [{"path": str(relative_path.parent) + '/' + f.name, "name": f.name} for f in files_and_dirs]
+                    formatted_list += [{"path": str(relative_path.parent) + '/' + f.name, "name": f.name} for f in
+                                       files_and_dirs]
                     out = self.render.make_main_page(str(relative_path), formatted_list)
                     headers['Content-Type'] = 'text/html'
                     headers['Content-Length'] = str(len(out))

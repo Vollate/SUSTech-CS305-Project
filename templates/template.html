@@ -35,28 +35,33 @@
     </li>
     {% endfor %}
 </ul>
-
-
 <hr>
-</body>
 <form method="post" enctype="multipart/form-data" id="uploadForm" onsubmit="setActionWithFilename()">
     <div>
         <label for="file">Choose file to upload</label>
-        <br>
-        <br>
-        <input type="file" id="file" name="file" multiple/>
+        <br><br>
+        <input type="file" id="file" name="file" onchange="updateFilename()"/>
     </div>
     <br>
     <div>
         <button type="submit">Submit</button>
     </div>
 </form>
+</body>
 <script>
+    function updateFilename() {
+        var fileInput = document.getElementById('file');
+        if (fileInput.files.length > 0) {
+            var filename = fileInput.files[0].name;
+            fileInput.setAttribute('data-filename', filename);
+        }
+    }
+
     function setActionWithFilename() {
         var form = document.getElementById('uploadForm');
         var fileInput = document.getElementById('file');
         var filename = fileInput.getAttribute('data-filename');
-        form.action = '/upload?path={{title}}' + '/';
+        form.action = '/upload?path={{title}}/' + encodeURIComponent(filename);
     }
 </script>
 
