@@ -143,9 +143,9 @@ class File_Manager:
                     else:
                         formatted_list = []
                         if not is_root:
-                            formatted_list.append({"path": '/' + str(relative_path), "name": './'})
-                            formatted_list.append({"path": '/' + str(relative_path.parent), "name": '../'})
-                        formatted_list += [{"path": '/' + str(relative_path) + '/' + f.name, "name": f.name} for f in files_and_dirs]
+                            formatted_list.append({"path": '/' + str(relative_path)+'/', "name": './'})
+                            formatted_list.append({"path": '/' + str(relative_path.parent)+'/', "name": '../'})
+                        formatted_list += [{"path": '/' + str(relative_path) + '/' + f.name + '/', "name": f.name+'/'} if f.is_dir() else {"path": '/' + str(relative_path) + '/' + f.name, "name": f.name} for f in files_and_dirs]
                         out = self.render.make_main_page('/' + str(relative_path), formatted_list)
                         headers['Content-Type'] = 'text/html'
                         headers['Content-Length'] = str(len(out))
