@@ -87,10 +87,11 @@ class File_Manager:
                 # print(relative_path)
                 if file_path.is_dir():
                     files_and_dirs = list(file_path.iterdir())
-                    formatted_list = [{"path": '/' + str(relative_path) + '/' + f.name, "name": f.name} for f in files_and_dirs]
+                    formatted_list = []
                     if not is_root:
                         formatted_list.append({"path": '/' + str(relative_path), "name": '.'})
                         formatted_list.append({"path": '/' + str(relative_path.parent), "name": '..'})
+                    formatted_list += [{"path": '/' + str(relative_path) + '/' + f.name, "name": f.name} for f in files_and_dirs]
                     out = self.render.make_main_page('/' + str(relative_path), formatted_list)
                     headers['Content-Type'] = 'text/html'
                     headers['Content-Length'] = str(len(out))
@@ -138,7 +139,18 @@ class File_Manager:
                         shutil.rmtree(file_path)
                     else:
                         file_path.unlink()
-                    return HTTP.build_response(200, 'OK', headers, 'File Deleted')
+                    file_path = file_path.parent
+                    relative_path = relative_path.parent
+                    files_and_dirs = list(file_path.iterdir())
+                    formatted_list = []
+                    if not file_path.name is username[0]:
+                        formatted_list.append({"path":  str(relative_path), "name": '.'})
+                        formatted_list.append({"path": str(relative_path.parent), "name": '..'})
+                    formatted_list += [{"path": str(relative_path.parent) + '/' + f.name, "name": f.name} for f in files_and_dirs]
+                    out = self.render.make_main_page(str(relative_path), formatted_list)
+                    headers['Content-Type'] = 'text/html'
+                    headers['Content-Length'] = str(len(out))
+                    return HTTP.build_response(200, 'OK', headers, out)
                 else:
                     return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
 
