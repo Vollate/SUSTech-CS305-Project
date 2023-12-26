@@ -1,4 +1,17 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<style>
+    .btn-link {
+        border: none;
+        outline: none;
+        background: none;
+        cursor: pointer;
+        color: #0000EE;
+        padding: 0;
+        text-decoration: underline;
+        font-family: inherit;
+        font-size: inherit;
+    }
+</style>
 <html>
 
 <head>
@@ -14,7 +27,10 @@
     {% for file in files %}
     <li style="display: flex; justify-content: space-between; align-items: center;">
         <a href="{{ file.path }}">{{ file.name }}</a>
-        <a href="/delete?path={{ file.path }}">Delete</a>
+
+        <form action="/delete?path={{ file.path }}" method="post">
+            <button type="submit">Delete</button>
+        </form>
         <p></p>
     </li>
     {% endfor %}
