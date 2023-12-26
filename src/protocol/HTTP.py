@@ -20,14 +20,14 @@ class http_header:
 class HTTP_Request:
     def __init__(self, binary_data=None) -> None:
         self.binary_data = binary_data
-        if binary_data is None:
-            return
         self.method = None
         self.url = None
         self.http_version = None
         self.header = http_header()
         self.body = None
-        self.parse_binary_data()
+        self.body_without_boundary = None
+        if binary_data:
+            self.parse_binary_data()
 
     def parse_binary_data(self):
         parts = self.binary_data.split(b"\r\n\r\n", 1)
@@ -35,12 +35,11 @@ class HTTP_Request:
         request_line = header_body[0].decode()
         print(request_line)
         self.method, self.url, self.http_version = request_line.split(' ', 2)
+        # print(parts)
         self.header = http_header(header_body[1].decode())
-        if len(parts) == 2:
-            if self.header.fields.get("Content-Type") == 'text/html':
-                self.body = parts[1].decode()
-            else:
-                self.body = parts[1]
+        self.body = parts[1]
+        if b"\r\n\r\n" in parts[1]:
+            self.body_without_boundary = parts[1].split(b"\r\n\r\n", 1)[1]
 
 
 class http_response:
@@ -66,6 +65,7 @@ class HTTPStatus:
     def __init__(self):
         self.receive_partially = False
         self.request = HTTP_Request()
+        self.boundary = None
         self.current_receive_size = 0
         self.expect_receive_size = 0
         self.current_send_size = 0

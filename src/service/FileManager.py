@@ -19,6 +19,19 @@ def find_relative_path_to_target_folder(path, target_folder_name):
     return False, relative_path
 
 
+def remove_boundary(data, boundary):
+    tmp = data.split(b'\r\n--' + boundary.encode() + b'--\r\n')
+    res = tmp[0]
+    for i in range(1, len(tmp)):
+        res += tmp[i]
+    return res
+
+
+def get_boundary(request):
+    boundary = request.header.fields.get('Content-Type').split('boundary=')[1]
+    return boundary
+
+
 class File_Manager:
     def __init__(self, base_path):
         self.title = "File Manager: "
@@ -55,16 +68,16 @@ class File_Manager:
         headers = {}
         request = HTTP.HTTP_Request()
         if status.receive_partially:
+            # print("partially receive data")
             status.current_receive_size += len(data)
             status.receive_buffer += data
-            print(
-                f"receive partially: {status.current_receive_size}/{status.expect_receive_size}, length of file {len(status.receive_buffer)}")
+            # print(
+            #     f"receive partially: {status.current_receive_size}/{status.expect_receive_size}, length of file {len(status.receive_buffer)}")
             if status.current_receive_size < status.expect_receive_size:
                 return None
             elif status.current_receive_size == status.expect_receive_size:
                 request = status.request
-                request.body = status.receive_buffer
-                print(request.header.fields)
+                request.body_without_boundary = remove_boundary(status.receive_buffer, status.boundary)
                 status.receive_partially = False
                 pass
             else:
@@ -73,14 +86,16 @@ class File_Manager:
                 status.receive_partially = False
                 return None
         else:
+            # print("current not receive partially")
             request = HTTP.parse_request(data)
             length = request.header.fields.get('Content-Length')
-            if not (length is None) and int(length) > len(request.body):
+            if length and request.body and int(length) > len(request.body):
                 status.receive_partially = True
                 status.request = request
                 status.current_receive_size = len(request.body)
                 status.expect_receive_size = int(length)
-                status.receive_buffer = data
+                status.receive_buffer = request.body_without_boundary
+                status.boundary = get_boundary(request)
                 return None
 
         try:
@@ -183,8 +198,8 @@ class File_Manager:
                         return HTTP.build_response(400, 'Bad Request', headers, 'No Data to Save')
                     if file_path.is_dir():
                         return HTTP.build_response(400, 'Bad Request', headers, 'Invalid File Path')
-                    with file_path.open('w') as file:
-                        file.write(request.body)
+                    with file_path.open('wb') as file:
+                        file.write(request.body_without_boundary)
                     return HTTP.build_response(200, 'OK', headers, 'File Saved')
 
                 elif method == 'delete':
@@ -199,7 +214,7 @@ class File_Manager:
                     files_and_dirs = list(file_path.iterdir())
                     formatted_list = []
                     if not (file_path.name == username[0]):
-                        formatted_list.append({"path":  str(relative_path), "name": '.'})
+                        formatted_list.append({"path": str(relative_path), "name": '.'})
                         formatted_list.append({"path": str(relative_path.parent), "name": '..'})
                     formatted_list += [{"path": str(relative_path.parent) + '/' + f.name, "name": f.name} for f in
                                        files_and_dirs]
