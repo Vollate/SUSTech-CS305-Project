@@ -143,7 +143,7 @@ class File_Manager:
                     relative_path = relative_path.parent
                     files_and_dirs = list(file_path.iterdir())
                     formatted_list = []
-                    if not file_path.name is username[0]:
+                    if not (file_path.name == username[0]):
                         formatted_list.append({"path":  str(relative_path), "name": '.'})
                         formatted_list.append({"path": str(relative_path.parent), "name": '..'})
                     formatted_list += [{"path": str(relative_path.parent) + '/' + f.name, "name": f.name} for f in files_and_dirs]
