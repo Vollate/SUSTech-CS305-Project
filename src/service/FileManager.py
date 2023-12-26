@@ -97,8 +97,20 @@ class File_Manager:
 
             request.url = request.url.strip('/')
             dir_path = self.base_path / 'data'
+
             if request.method == 'GET':
-                is_root = request.url == '' or request.url == username[0]
+                
+                LIST_MODE = False
+                if(request.url.contains('?')):
+                    relative_path, query = request.url.split('?', 1)
+                    if query == 'SUSTech-HTTP=[1]':
+                        LIST_MODE = True
+                    elif query == 'SUSTech-HTTP=[0]':
+                        LIST_MODE = False
+                    else :
+                        return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')       
+                
+                is_root = relative_path.name == '' or relative_path.name == username[0]
                 if not (dir_path / username[0]).exists():
                     (dir_path / username[0]).mkdir()
 
@@ -116,16 +128,25 @@ class File_Manager:
                 # print(relative_path)
                 if file_path.is_dir():
                     files_and_dirs = list(file_path.iterdir())
-                    formatted_list = []
-                    if not is_root:
-                        formatted_list.append({"path": '/' + str(relative_path), "name": '.'})
-                        formatted_list.append({"path": '/' + str(relative_path.parent), "name": '..'})
-                    formatted_list += [{"path": '/' + str(relative_path) + '/' + f.name, "name": f.name} for f in
-                                       files_and_dirs]
-                    out = self.render.make_main_page('/' + str(relative_path), formatted_list)
-                    headers['Content-Type'] = 'text/html'
-                    headers['Content-Length'] = str(len(out))
-                    return HTTP.build_response(200, 'OK', headers, out)
+                    
+                    # SUSTech-HTTP
+                    if LIST_MODE:
+                        formatted_list = [f.name + '/' if f.is_dir() else f.name for f in files_and_dirs]
+                        out = self.render.make_list_page('/' + str(relative_path), formatted_list)
+                        headers['Content-Type'] = 'text/html'
+                        headers['Content-Length'] = str(len(out))
+                        return HTTP.build_response(200, 'OK', headers, out)
+                    else:
+                        formatted_list = []
+                        if not is_root:
+                            formatted_list.append({"path": '/' + str(relative_path), "name": './'})
+                            formatted_list.append({"path": '/' + str(relative_path.parent), "name": '../'})
+                        formatted_list += [{"path": '/' + str(relative_path) + '/' + f.name, "name": f.name} for f in files_and_dirs]
+                        out = self.render.make_main_page('/' + str(relative_path), formatted_list)
+                        headers['Content-Type'] = 'text/html'
+                        headers['Content-Length'] = str(len(out))
+                        return HTTP.build_response(200, 'OK', headers, out)
+
                 elif file_path.is_file():
                     with file_path.open('rb') as file:
                         file_content = file.read()
