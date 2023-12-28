@@ -1,3 +1,6 @@
+import time
+
+
 class http_header:
     def __init__(self, raw_header=None) -> None:
         self.fields = {}
@@ -72,6 +75,7 @@ class HTTPStatus:
         self.expect_send_size = 0
         self.receive_buffer = b''
         self.send_buffer = b''
+        self.start_time = time.time()
 
 
 def parse_request(data) -> HTTP_Request:

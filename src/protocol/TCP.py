@@ -1,4 +1,6 @@
 import socket
+import sys
+
 from src.protocol import HTTP
 
 
@@ -15,12 +17,12 @@ class TCPServer:
         self.running = True
 
     def handle_client(self, client_socket):
-        # client_socket.settimeout(5.0)
+        # client_socket.settimeout(1.0)
         status = HTTP.HTTPStatus()
         with client_socket:
             while True:
                 try:
-                    data = client_socket.recv(1024)
+                    data = client_socket.recv(10240000000)
                     if not data:
                         break
                     send_message = self.file_manager.process(data, status)
@@ -45,8 +47,8 @@ class TCPServer:
             except OSError:
                 break
             print(f"Connected to {addr}")
-            self.handle_client(client_socket)
-            # self.thread_pool.submit(lambda: self.handle_client(client_socket))
+            # self.handle_client(client_socket)
+            self.thread_pool.submit(lambda: self.handle_client(client_socket))
 
     def stop(self):
         self.running = False

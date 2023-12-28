@@ -17,7 +17,7 @@ SERVER_STATUS = True
 
 base_path = Path(__file__).resolve().parent
 fm = FileManager.File_Manager(base_path)
-tcp_server = TCP.TCPServer(argv.i, argv.p, ThreadPool.ThreadPool(10), fm)
+tcp_server = TCP.TCPServer(argv.i, argv.p, ThreadPool.ThreadPool(1000), fm)
 
 
 def signal_handler(sig, frame):

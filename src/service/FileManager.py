@@ -1,6 +1,7 @@
 import base64
 import json
 import shutil
+import time
 from pathlib import Path
 from src.utils import HTML
 from src.protocol import HTTP
@@ -68,17 +69,17 @@ class File_Manager:
         headers = {}
         request = HTTP.HTTP_Request()
         if status.receive_partially:
-            # print("partially receive data")
             status.current_receive_size += len(data)
             status.receive_buffer += data
-            # print(
-            #     f"receive partially: {status.current_receive_size}/{status.expect_receive_size}, length of file {len(status.receive_buffer)}")
+            print(
+                f"receive partially: {status.current_receive_size}/{status.expect_receive_size}, length of this time {len(data)}")
             if status.current_receive_size < status.expect_receive_size:
                 return None
             elif status.current_receive_size == status.expect_receive_size:
                 request = status.request
                 request.body_without_boundary = remove_boundary(status.receive_buffer, status.boundary)
                 status.receive_partially = False
+                print(f"receive cost {time.time() - status.start_time} s")
                 pass
             else:
                 print("receive too much data, discard")
@@ -86,7 +87,6 @@ class File_Manager:
                 status.receive_partially = False
                 return None
         else:
-            # print("current not receive partially")
             request = HTTP.parse_request(data)
             length = request.header.fields.get('Content-Length')
             if length and request.body and int(length) > len(request.body):
@@ -96,6 +96,7 @@ class File_Manager:
                 status.expect_receive_size = int(length)
                 status.receive_buffer = request.body_without_boundary
                 status.boundary = get_boundary(request)
+                status.start_time = time.time()
                 return None
 
         try:
@@ -114,9 +115,9 @@ class File_Manager:
             dir_path = self.base_path / 'data'
 
             if request.method == 'GET':
-                
+
                 LIST_MODE = False
-                if(request.url.find('?') != -1):
+                if (request.url.find('?') != -1):
                     relative_path, query = request.url.split('?', 1)
                     relative_path = Path(relative_path)
                     query, id = query.split('=', 1)
@@ -124,13 +125,13 @@ class File_Manager:
                         LIST_MODE = True
                     elif query == 'SUSTech-HTTP' and id == '0':
                         LIST_MODE = False
-                    else :
-                        return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')     
+                    else:
+                        return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
                     is_root = relative_path.name == '' or relative_path.name == username[0]
                 else:
                     is_root = request.url == '' or request.url == username[0]
                     relative_path = Path(request.url)
-                
+
                 if not (dir_path / username[0]).exists():
                     (dir_path / username[0]).mkdir()
 
@@ -148,19 +149,21 @@ class File_Manager:
                 # print(relative_path)
                 if file_path.is_dir():
                     files_and_dirs = list(file_path.iterdir())
-                    
+
                     # SUSTech-HTTP
                     if LIST_MODE:
                         formatted_list = [f.name + '/' if f.is_dir() else f.name for f in files_and_dirs]
                         headers['Content-Type'] = 'text/html'
                         headers['Content-Length'] = len(str(formatted_list))
-                        return HTTP.build_response(200, 'OK', headers) ,str(formatted_list).encode()
+                        return HTTP.build_response(200, 'OK', headers), str(formatted_list).encode()
                     else:
                         formatted_list = []
                         if not is_root:
-                            formatted_list.append({"path": '/' + str(relative_path)+'/', "name": './'})
-                            formatted_list.append({"path": '/' + str(relative_path.parent)+'/', "name": '../'})
-                        formatted_list += [{"path": '/' + str(relative_path) + '/' + f.name + '/', "name": f.name+'/'} if f.is_dir() else {"path": '/' + str(relative_path) + '/' + f.name, "name": f.name} for f in files_and_dirs]
+                            formatted_list.append({"path": '/' + str(relative_path) + '/', "name": './'})
+                            formatted_list.append({"path": '/' + str(relative_path.parent) + '/', "name": '../'})
+                        formatted_list += [{"path": '/' + str(relative_path) + '/' + f.name + '/',
+                                            "name": f.name + '/'} if f.is_dir() else {
+                            "path": '/' + str(relative_path) + '/' + f.name, "name": f.name} for f in files_and_dirs]
                         out = self.render.make_main_page('/' + str(relative_path), formatted_list)
                         headers['Content-Type'] = 'text/html'
                         headers['Content-Length'] = str(len(out))
@@ -198,8 +201,10 @@ class File_Manager:
                         return HTTP.build_response(400, 'Bad Request', headers, 'No Data to Save')
                     if file_path.is_dir():
                         return HTTP.build_response(400, 'Bad Request', headers, 'Invalid File Path')
+                    begin_time = time.time()
                     with file_path.open('wb') as file:
                         file.write(request.body_without_boundary)
+                    print(f"save cost {time.time() - begin_time} s")
                     return HTTP.build_response(200, 'OK', headers, 'File Saved')
 
                 elif method == 'delete':
