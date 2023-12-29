@@ -1,20 +1,68 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<style>
+    .btn-link {
+        border: none;
+        outline: none;
+        background: none;
+        cursor: pointer;
+        color: #0000EE;
+        padding: 0;
+        text-decoration: underline;
+        font-family: inherit;
+        font-size: inherit;
+    }
+</style>
 <html>
 
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>{{title}}</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Dragon Server</title>
 </head>
 
 <body>
-  <h1>{{title}}</h1>
-  <hr>
-  <ul>
+<h1>Current Path: {{title}}</h1>
+<p>If you are along ...</p>
+<hr>
+<ul>
     {% for file in files %}
-    <li><a href="{{ file.path }}">{{ file.name }}</a></li>
+    <li style="display: flex; justify-content: space-between; align-items: center;">
+        <a href="{{ file.path }}">{{ file.name }}</a>
+
+        <form action="/delete?path={{ file.path }}" method="post">
+            <button type="submit">Delete</button>
+        </form>
+        <p></p>
+    </li>
     {% endfor %}
-  </ul>
-  <hr>
+</ul>
+<hr>
+<form method="post" enctype="multipart/form-data" id="uploadForm" onsubmit="setActionWithFilename()">
+    <div>
+        <label for="file">Choose file to upload</label>
+        <br><br>
+        <input type="file" id="file" name="file" onchange="updateFilename()"/>
+    </div>
+    <br>
+    <div>
+        <button type="submit">Submit</button>
+    </div>
+</form>
 </body>
+<script>
+    function updateFilename() {
+        var fileInput = document.getElementById('file');
+        if (fileInput.files.length > 0) {
+            var filename = fileInput.files[0].name;
+            fileInput.setAttribute('data-filename', filename);
+        }
+    }
+
+    function setActionWithFilename() {
+        var form = document.getElementById('uploadForm');
+        var fileInput = document.getElementById('file');
+        var filename = fileInput.getAttribute('data-filename');
+        form.action = '/upload?path={{title}}/' + encodeURIComponent(filename);
+    }
+</script>
 
 </html>
