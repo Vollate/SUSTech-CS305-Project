@@ -89,6 +89,8 @@ class File_Manager:
         else:
             request = HTTP.parse_request(data)
             length = request.header.fields.get('Content-Length')
+            if request.header.fields.get('Connection') != 'keep-alive':
+                status.oneshot = True
             if length and request.body and int(length) > len(request.body):
                 status.receive_partially = True
                 status.request = request
