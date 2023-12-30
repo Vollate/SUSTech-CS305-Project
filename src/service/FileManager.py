@@ -3,6 +3,7 @@ import json
 import shutil
 import time
 from pathlib import Path
+from src.service.SessionManager import SessionManager
 from src.utils import HTML
 from src.protocol import HTTP
 
@@ -45,6 +46,7 @@ class File_Manager:
         self.base_path = Path(base_path)
         self.USERS_DB = self.load_user_db()
         self.render = HTML.html_render("templates", "template.html")
+        self.session_manager = SessionManager()
 
     def load_user_db(self):
         accounts_path = self.base_path / 'src' / 'service' / 'accounts.json'
@@ -54,7 +56,7 @@ class File_Manager:
         except FileNotFoundError:
             return {}
 
-    def authorize(self, auth_header, ret_username):
+    def authorize(self, auth_header, ret_username, cookies):
         if auth_header is None:
             return False
         if not auth_header.startswith('Basic '):
@@ -65,11 +67,24 @@ class File_Manager:
         if username in self.USERS_DB:
             if self.USERS_DB[username] == password:
                 ret_username[0] = username
+                if self.session_manager.validate_session(cookies.get('session-id')):
+                    pass
+                else:
+                    self.session_manager.create_session(username)
                 return True
             else:
                 return False
         else:
             return False
+        
+    def authorize(self, auth_header, ret_username, cookies):
+        session_id = cookies.get('session-id')
+        if session_id:
+            username = self.session_manager.validate_session(session_id)
+            if username:
+                ret_username[0] = username
+                return True
+        return super().authorize(auth_header, ret_username)
 
     def process(self, data, status: HTTP.HTTPStatus):
         headers = {}
@@ -112,13 +127,14 @@ class File_Manager:
         try:
             username = ['']
             auth_header = request.header.fields.get('Authorization')
-            if auth_header and self.authorize(auth_header, username):
+            if auth_header and self.authorize(auth_header, username, request.header.fields.get('Cookie')):
                 pass
             else:
                 out = self.render.make_login()
                 headers['Content-Type'] = 'text/html'
                 headers['Content-Length'] = str(len(out))
                 headers['WWW-Authenticate'] = 'Basic realm="Authorization Required"'
+                headers['Set-Cookie'] = 'session-id=' + self.session_manager.create_session(username[0])
                 return HTTP.build_response(401, 'Unauthorized', headers, out)
 
             request.url = request.url.strip('/')
