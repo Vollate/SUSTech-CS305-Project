@@ -182,7 +182,6 @@ class File_Manager:
                         headers['Transfer-Encoding'] = 'chunked'
                         headers['Content-Type'] = content_type
                         headers['Content-Disposition'] = content_disposition
-                        # 实现分块传输
                         chunk_size = 1024
                         chunk_num = len(file_content) // chunk_size
                         if len(file_content) % chunk_size != 0:
