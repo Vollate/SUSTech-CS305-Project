@@ -176,8 +176,63 @@ class File_Manager:
                     content_disposition = f'attachment; filename="{file_path.name}"'
                     if file_path.name.endswith('favicon.ico'):
                         content_type = 'image/x-icon'
+
+                    range_header = request.header.fields.get('Range')
+                    if range_header:
+                        _, range_str = range_header.split('=')
+                        range_list = range_str.split(',')
+                        if len(range_list) == 1:
+                            try:
+                                start, end = range_list[0].split('-')
+                                start = int(start) if start else 0
+                                end = int(end) if end else len(file_content) - 1
+                                if end == -1:
+                                    end = len(file_content) - 1
+                                if start > end or end >= len(file_content):
+                                    raise ValueError("Invalid range")
+                                headers['Content-Type'] = content_type
+                                headers['Content-Length'] = str(end - start + 1)
+                                headers['Content-Disposition'] = content_disposition
+                                return HTTP.build_response(206, 'Partial Content', headers), file_content[start:end + 1]
+                            except ValueError:
+                                return HTTP.build_response(416, 'Range Not Satisfiable', headers, 'Range Not Satisfiable')
+                        else:
+                            boundary = 'BOUNDARY_STRING'
+                            multipart_content = []
+
+                            for range_spec in range_list:
+                                try:
+                                    start_str, end_str = range_spec.split('-')
+                                    start = int(start_str) if start_str else 0
+                                    end = int(end_str) if end_str else len(file_content) - 1
+                                    if end == -1:
+                                        end = len(file_content) - 1
+
+                                    if start > end or end >= len(file_content):
+                                        raise ValueError("Invalid range")
+
+                                    range_content = file_content[start:end + 1]
+                                    content_range_header = f'bytes {start}-{end}/{len(file_content)}'
+
+                                    # 构建每个部分
+                                    part_headers = f'--{boundary}\r\n'
+                                    part_headers += f'Content-Type: {content_type}\r\n'
+                                    part_headers += f'Content-Range: {content_range_header}\r\n\r\n'
+                                    multipart_content.append(part_headers.encode() + range_content + b'\r\n')
+
+                                except ValueError:
+                                    continue
+
+                            if multipart_content:
+                                full_response = b''.join(multipart_content) + f'--{boundary}--'.encode()
+                                headers['Content-Type'] = f'multipart/byteranges; boundary={boundary}'
+                                headers['Content-Length'] = str(len(full_response))
+                                return HTTP.build_response(206, 'Partial Content', headers), full_response
+                            else:
+                                return HTTP.build_response(416, 'Range Not Satisfiable', headers, 'Invalid Range')
+
                     Transfer_Encoding = request.header.fields.get('Transfer-Encoding')
-                    print("Transfer_Encoding: ", Transfer_Encoding)
+                    # print("Transfer_Encoding: ", Transfer_Encoding)
                     if Transfer_Encoding == "chunked":
                         headers['Transfer-Encoding'] = 'chunked'
                         headers['Content-Type'] = content_type
