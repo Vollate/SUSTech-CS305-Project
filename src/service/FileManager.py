@@ -176,10 +176,32 @@ class File_Manager:
                     content_disposition = f'attachment; filename="{file_path.name}"'
                     if file_path.name.endswith('favicon.ico'):
                         content_type = 'image/x-icon'
-                    headers['Content-Type'] = content_type
-                    headers['Content-Length'] = str(len(file_content))
-                    headers['Content-Disposition'] = content_disposition
-                    return HTTP.build_response(200, 'OK', headers), file_content
+                    Transfer_Encoding = request.header.fields.get('Transfer-Encoding')
+                    print("Transfer_Encoding: ", Transfer_Encoding)
+                    if Transfer_Encoding == "chunked":
+                        headers['Transfer-Encoding'] = 'chunked'
+                        headers['Content-Type'] = content_type
+                        headers['Content-Disposition'] = content_disposition
+                        # 实现分块传输
+                        chunk_size = 1024
+                        chunk_num = len(file_content) // chunk_size
+                        if len(file_content) % chunk_size != 0:
+                            chunk_num += 1
+                        file_chunks = []
+                        for i in range(chunk_num):
+                            start = i * chunk_size
+                            end = start + chunk_size
+                            chunk_data = file_content[start:end]
+                            size_header = hex(len(chunk_data))[2:].encode() + b'\r\n'
+                            file_chunks.append(size_header + chunk_data + b'\r\n')
+                        file_chunks.append(b'0\r\n\r\n')
+                        file_chunk = b''.join(file_chunks)
+                        return HTTP.build_response(200, 'OK', headers), file_chunk
+                    else:
+                        headers['Content-Type'] = content_type
+                        headers['Content-Length'] = str(len(file_content))
+                        headers['Content-Disposition'] = content_disposition
+                        return HTTP.build_response(200, 'OK', headers), file_content
                 else:
                     return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
 
