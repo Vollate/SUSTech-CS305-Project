@@ -56,7 +56,7 @@ class File_Manager:
         except FileNotFoundError:
             return {}
 
-    def authorize(self, auth_header, ret_username, cookies):
+    def authorize(self, auth_header, ret_username, cookies=None):
         if auth_header is None:
             return False
         if not auth_header.startswith('Basic '):
@@ -76,15 +76,6 @@ class File_Manager:
                 return False
         else:
             return False
-        
-    def authorize(self, auth_header, ret_username, cookies):
-        session_id = cookies.get('session-id')
-        if session_id:
-            username = self.session_manager.validate_session(session_id)
-            if username:
-                ret_username[0] = username
-                return True
-        return super().authorize(auth_header, ret_username)
 
     def process(self, socket_conn, data, status: HTTP.HTTPStatus):
         headers = {}
