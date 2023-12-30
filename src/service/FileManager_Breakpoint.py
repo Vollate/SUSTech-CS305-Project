@@ -1,5 +1,6 @@
 import base64
 import json
+import mimetypes
 import shutil
 import time
 from pathlib import Path
@@ -179,7 +180,7 @@ class File_Manager:
                         return HTTP.build_response(200, 'OK', headers, out)
 
                 elif file_path.is_file():
-                    content_type = 'application/octet-stream'
+                    content_type = mimetypes.guess_type(file_path)[0]
                     content_disposition = f'attachment; filename="{file_path.name}"'
                     if file_path.name.endswith('favicon.ico'):
                         content_type = 'image/x-icon'
@@ -187,8 +188,7 @@ class File_Manager:
                         file_content = file.read()
                     range_header = request.header.fields.get('Range')
                     if range_header:
-                        _, range_str = range_header.split('=')
-                        range_list = range_str.split(',')
+                        range_list = range_header.split(',')
                         if len(range_list) == 1:
                             try:
                                 start, end = range_list[0].split('-')
@@ -206,7 +206,7 @@ class File_Manager:
                                 return HTTP.build_response(416, 'Range Not Satisfiable', headers,
                                                            'Range Not Satisfiable')
                         else:
-                            boundary = 'BOUNDARY_STRING'
+                            boundary = 'THISISMYSELFDIFINEDBOUNDARY'
                             multipart_content = []
 
                             for range_spec in range_list:
