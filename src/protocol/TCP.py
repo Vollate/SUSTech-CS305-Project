@@ -102,8 +102,8 @@ class TCPServer:
             except OSError:
                 break
             print(f"Connected to {addr}")
-            # self.handle_client(client_socket)
-            self.thread_pool.submit(lambda: self.handle_client(client_socket))
+            self.handle_client(client_socket)
+            # self.thread_pool.submit(lambda: self.handle_client(client_socket))
 
     def stop(self):
         self.running = False

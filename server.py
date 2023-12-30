@@ -28,6 +28,6 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     print("server start")
-    # if platform.platform().startswith("Linux"):
-    #     subprocess.call(["xdg-open", "127.0.0.1:{}".format(argv.p)])
+    if platform.platform().startswith("Linux"):
+        subprocess.call(["xdg-open", "127.0.0.1:{}".format(argv.p)])
     tcp_server.run()

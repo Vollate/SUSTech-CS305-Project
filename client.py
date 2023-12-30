@@ -1,9 +1,8 @@
 import argparse
 import socket
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from Cryptodome.Cipher import AES
 import os
 import uuid
@@ -33,38 +32,44 @@ class Client:
             + data
             + f"\r\n--{boundary}--\r\n".encode()
         )
-        msg = f"POST /upload?path={file_path}\n HTTP/1.1\r\nContent-Length: {len(body)}\r\nContent-Type=multipart/form-data; boundary={boundary}\r\n\r\n"
-        self.conn.send(self.encrypt_msg(msg))
+        msg = (
+            f"POST /upload?path={file_path} HTTP/1.1\r\nAuthorization: Basic MTIzOjEyMw==\r\nContent-Length: {len(body)}\r\nContent-Type=multipart/form-data; boundary={boundary}\r\n\r\n".encode()
+            + body
+        )
+        self.conn.send(self.encrypt_msg(msg, True).encode())
 
     def delete(self, file_path):
         msg = f"POST /delete?path={file_path} HTTP/1.1\r\nAuthorization: Basic MTIzOjEyMw==\r\nContent-Length: 0\r\n\r\n\r\n\r\n"
         self.conn.send(self.encrypt_msg(msg).encode())
 
     def handle_input(self):
-        while True:
-            cmd = input("get|post|exit\n>> ")
-            if cmd == "exit":
-                return
-            elif cmd == "get":
-                self.send_get(input("URL path:\n>> "))
-            elif cmd == "post":
-                cmd = input("upload|delete:\n>>")
-                if cmd == "upload":
-                    local_path = input("Local file path:\n>> ")
-                    server_path = input("Server directory path:\n>> ")
-                    self.upload(local_path, server_path)
-                elif cmd == "delete":
-                    self.delete(input("Server file path:\n>> "))
-                else:
-                    continue
+        cmd = input("get|post|exit\n>> ")
+        if cmd == "exit":
+            return
+        elif cmd == "get":
+            self.send_get(input("URL path:\n>> "))
+        elif cmd == "post":
+            cmd = input("upload|delete:\n>>")
+            if cmd == "upload":
+                # local_path = input("Local file path:\n>> ")
+                # server_path = input("Server directory path:\n>> ")
+                # self.upload(local_path, server_path)
+                self.upload("./c-data/foo.c", "/123/foo.c")
+            elif cmd == "delete":
+                self.delete(input("Server file path:\n>> "))
             else:
-                print("Invalid input")
-                continue
-            receive_data = self.conn.recv(102400).decode
-            print(self.decrypt_msg(receive_data))
+                pass
+        else:
+            print("Invalid input")
+            return
+        receive_data = self.conn.recv(102400)
+        print(self.decrypt_msg(receive_data))
 
-    def encrypt_msg(self, msg):
-        encrypted_msg, tag = self.cipher.encrypt_and_digest(msg.encode())
+    def encrypt_msg(self, msg, binary=False):
+        if binary:
+            encrypted_msg, tag = self.cipher.encrypt_and_digest(msg)
+        else:
+            encrypted_msg, tag = self.cipher.encrypt_and_digest(msg.encode())
         return "&".join(
             [
                 base64.b64encode(x).decode()
@@ -85,7 +90,7 @@ argv = parser.parse_args()
 
 client_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_conn.connect((argv.i, argv.p))
-public_key_pem = client_conn.recv(1024)
+public_key_pem = client_conn.recv(10240)
 public_key = load_pem_public_key(public_key_pem)
 key = os.urandom(32)
 encrypted_symmetric_key = public_key.encrypt(
