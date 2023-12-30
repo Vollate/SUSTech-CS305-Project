@@ -6,8 +6,8 @@ import argparse
 from src.service import ThreadPool
 
 # just for dev
-# import subprocess
-# import platform
+import subprocess
+import platform
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", type=str, help="ip address")
@@ -28,6 +28,6 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     print("server start")
-    # if platform.platform().startswith("Linux"):
-    #     subprocess.call(["xdg-open", "127.0.0.1:{}".format(argv.p)])
+    if platform.platform().startswith("Linux"):
+        subprocess.call(["xdg-open", "127.0.0.1:{}".format(argv.p)])
     tcp_server.run()
