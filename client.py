@@ -5,7 +5,6 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from Cryptodome.Cipher import AES
 import os
-import uuid
 import base64
 
 
@@ -22,7 +21,7 @@ class Client:
     def upload(self, local_path, file_path):
         with open(local_path, "rb") as f:
             data = f.read()
-        boundary = "----WebKitFormBoundary" + str(uuid.uuid4()).replace("-", "")
+        boundary = "----CustomBoundary" + str(os.urandom(16).hex())
         body = (
             (
                 f"--{boundary}\r\n"
@@ -33,7 +32,7 @@ class Client:
             + f"\r\n--{boundary}--\r\n".encode()
         )
         msg = (
-            f"POST /upload?path={file_path} HTTP/1.1\r\nAuthorization: Basic MTIzOjEyMw==\r\nContent-Length: {len(body)}\r\nContent-Type=multipart/form-data; boundary={boundary}\r\n\r\n".encode()
+            f"POST /upload?path={file_path} HTTP/1.1\r\nAuthorization: Basic MTIzOjEyMw==\r\nContent-Length: {len(body)}\r\nContent-Type: multipart/form-data; boundary={boundary}\r\n\r\n".encode()
             + body
         )
         self.conn.send(self.encrypt_msg(msg, True).encode())
@@ -51,10 +50,9 @@ class Client:
         elif cmd == "post":
             cmd = input("upload|delete:\n>>")
             if cmd == "upload":
-                # local_path = input("Local file path:\n>> ")
-                # server_path = input("Server directory path:\n>> ")
-                # self.upload(local_path, server_path)
-                self.upload("./c-data/foo.c", "/123/foo.c")
+                local_path = input("Local file path:\n>> ")
+                server_path = input("Server directory path:\n>> ")
+                self.upload(local_path, server_path)
             elif cmd == "delete":
                 self.delete(input("Server file path:\n>> "))
             else:

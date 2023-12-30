@@ -31,7 +31,6 @@ def remove_boundary(data, boundary):
 def remove_double_boundary(data, boundary):
     tmp = data.split(b'\r\n--' + boundary.encode() + b'--\r\n')
     res = tmp[0].split(b'\r\n\r\n', 1)[1]
-    print(res)
     return res
 
 
