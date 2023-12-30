@@ -18,10 +18,9 @@ class Client:
 
     def send_get(self, file_path):
         msg = f"GET {file_path} HTTP/1.1\r\nAuthorization: Basic MTIzOjEyMw==\r\nContent-Length: 0\r\n\r\n\r\n\r\n"
-        print(f"send get msg:\n{msg}")
         self.conn.send(self.encrypt_msg(msg).encode())
 
-    def send_post(self, local_path, file_path):
+    def upload(self, local_path, file_path):
         with open(local_path, "rb") as f:
             data = f.read()
         boundary = "----WebKitFormBoundary" + str(uuid.uuid4()).replace("-", "")
@@ -37,26 +36,32 @@ class Client:
         msg = f"POST /upload?path={file_path}\n HTTP/1.1\r\nContent-Length: {len(body)}\r\nContent-Type=multipart/form-data; boundary={boundary}\r\n\r\n"
         self.conn.send(self.encrypt_msg(msg))
 
+    def delete(self, file_path):
+        msg = f"POST /delete?path={file_path} HTTP/1.1\r\nAuthorization: Basic MTIzOjEyMw==\r\nContent-Length: 0\r\n\r\n\r\n\r\n"
+        self.conn.send(self.encrypt_msg(msg).encode())
+
     def handle_input(self):
         while True:
-            self.send_get(input("URL path:\n>> "))
-            receive_data = self.conn.recv(102400)
-            print(self.decrypt_msg(receive_data).decode())
-            continue
-            cmd = input("GET|POST|exit\n>> ")
+            cmd = input("get|post|exit\n>> ")
             if cmd == "exit":
                 return
-            elif cmd == "GET":
+            elif cmd == "get":
                 self.send_get(input("URL path:\n>> "))
-            elif cmd == "POST":
-                local_path = input("Local file path:\n>> ")
-                server_path = input("Server directory path:\n>> ")
-                self.send_post(local_path, server_path)
+            elif cmd == "post":
+                cmd = input("upload|delete:\n>>")
+                if cmd == "upload":
+                    local_path = input("Local file path:\n>> ")
+                    server_path = input("Server directory path:\n>> ")
+                    self.upload(local_path, server_path)
+                elif cmd == "delete":
+                    self.delete(input("Server file path:\n>> "))
+                else:
+                    continue
             else:
                 print("Invalid input")
                 continue
             receive_data = self.conn.recv(102400).decode
-            print(self.dencrypt_msg(receive_data))
+            print(self.decrypt_msg(receive_data))
 
     def encrypt_msg(self, msg):
         encrypted_msg, tag = self.cipher.encrypt_and_digest(msg.encode())

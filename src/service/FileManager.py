@@ -49,7 +49,6 @@ class File_Manager:
             return {}
 
     def authorize(self, auth_header, ret_username):
-        print(auth_header)
         if auth_header is None:
             return False
         if not auth_header.startswith('Basic '):
@@ -148,8 +147,7 @@ class File_Manager:
                         return HTTP.build_response(403, 'Forbidden', headers, 'Forbidden')
                     if relative_path is None:
                         return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
-                # print(file_path)
-                # print(relative_path)
+
                 if file_path.is_dir():
                     files_and_dirs = list(file_path.iterdir())
 
