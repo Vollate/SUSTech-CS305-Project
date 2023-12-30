@@ -66,6 +66,7 @@ class http_response:
 
 class HTTPStatus:
     def __init__(self):
+        self.oneshot = False
         self.receive_partially = False
         self.request = HTTP_Request()
         self.boundary = None

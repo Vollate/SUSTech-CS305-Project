@@ -28,6 +28,13 @@ def remove_boundary(data, boundary):
     return res
 
 
+def remove_double_boundary(data, boundary):
+    tmp = data.split(b'\r\n--' + boundary.encode() + b'--\r\n')
+    res = tmp[0].split(b'\r\n\r\n', 1)[1]
+    print(res)
+    return res
+
+
 def get_boundary(request):
     boundary = request.header.fields.get('Content-Type').split('boundary=')[1]
     return boundary
@@ -89,6 +96,9 @@ class File_Manager:
         else:
             request = HTTP.parse_request(data)
             length = request.header.fields.get('Content-Length')
+            con_info = request.header.fields.get('Connection')
+            if con_info and con_info == 'close':
+                status.oneshot = True
             if length and request.body and int(length) > len(request.body):
                 status.receive_partially = True
                 status.request = request
@@ -98,7 +108,8 @@ class File_Manager:
                 status.boundary = get_boundary(request)
                 status.start_time = time.time()
                 return None
-
+            elif request.header.fields.get('Content-Type', '').startswith('multipart/form-data'):
+                request.body_without_boundary = remove_double_boundary(request.body, get_boundary(request))
         try:
             username = ['']
             auth_header = request.header.fields.get('Authorization')
@@ -145,8 +156,7 @@ class File_Manager:
                         return HTTP.build_response(403, 'Forbidden', headers, 'Forbidden')
                     if relative_path is None:
                         return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
-                # print(file_path)
-                # print(relative_path)
+
                 if file_path.is_dir():
                     files_and_dirs = list(file_path.iterdir())
 
