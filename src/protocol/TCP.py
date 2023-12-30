@@ -1,4 +1,3 @@
-import socket
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes
@@ -40,8 +39,8 @@ def send_encrypted_message(key, socket_conn, msg):
         socket_conn.send(msg[0].encode())
         socket_conn.send(msg[1])
     else:
-        cipher_text, tag = cipher.encrypt_and_digest(msg)
-        msg = "|".join(
+        cipher_text, tag = cipher.encrypt_and_digest(msg.encode())
+        msg = "&".join(
             [base64.b64encode(x).decode() for x in (cipher.nonce, tag, cipher_text)]
         )
         socket_conn.send(msg.encode())
@@ -59,7 +58,7 @@ def decrypt_msg(key, msg):
     nonce, tag, ciphertext = [
         base64.b64decode(x) for x in msg.decode().split("&")
     ]
-    cipher = AES.new(key, AES.MODE_EAX, nonce=nonce)
+    cipher = AES.new(key, AES.MODE_EAX,nonce=nonce)
     return cipher.decrypt_and_verify(ciphertext, tag)
 
 
@@ -85,12 +84,15 @@ class TCPServer:
                 data = client_socket.recv(10240000000)
                 if not data:
                     break
-                elif self.encrypt_enable:
-                    pass
+                if self.encrypt_enable:
+                    data = decrypt_msg(key, data)
                 send_message = self.file_manager.process(data, status)
                 if send_message is None:
                     continue
-                send_msg(client_socket, send_message)
+                if self.encrypt_enable:
+                    send_encrypted_message(key, client_socket, send_message)
+                else:
+                    send_msg(client_socket, send_message)
         print("Connection closed")
 
     def run(self):

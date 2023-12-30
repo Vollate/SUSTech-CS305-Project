@@ -49,6 +49,7 @@ class File_Manager:
             return {}
 
     def authorize(self, auth_header, ret_username):
+        print(auth_header)
         if auth_header is None:
             return False
         if not auth_header.startswith('Basic '):
