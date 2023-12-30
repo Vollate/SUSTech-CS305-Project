@@ -67,6 +67,8 @@ class File_Manager:
         if username in self.USERS_DB:
             if self.USERS_DB[username] == password:
                 ret_username[0] = username
+                if cookies is None:
+                    return False
                 if self.session_manager.validate_session(cookies.get('session-id')):
                     pass
                 else:
