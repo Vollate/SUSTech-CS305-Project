@@ -58,7 +58,7 @@ def decrypt_msg(key, msg):
     nonce, tag, ciphertext = [
         base64.b64decode(x) for x in msg.decode().split("&")
     ]
-    cipher = AES.new(key, AES.MODE_EAX,nonce=nonce)
+    cipher = AES.new(key, AES.MODE_EAX, nonce=nonce)
     return cipher.decrypt_and_verify(ciphertext, tag)
 
 
@@ -86,7 +86,7 @@ class TCPServer:
                     break
                 if self.encrypt_enable:
                     data = decrypt_msg(key, data)
-                send_message = self.file_manager.process(data, status)
+                send_message = self.file_manager.process(client_socket, data, status)
                 if send_message is None:
                     continue
                 if self.encrypt_enable:
