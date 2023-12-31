@@ -139,16 +139,7 @@ class File_Manager:
         try:
             username = ['']
             auth_header = request.header.fields.get('Authorization')
-            session_id = request.header.fields.get('Cookie')
-
-            is_web = None
-            if session_id:
-                cookie_header = session_id.split('=')[0]
-                if cookie_header != 'session-id':
-                    is_web = True
-                else:
-                    session_id = session_id.split('=')[1]
-                    is_web = False
+            cookie_data = request.header.fields.get('Cookie')
 
             if auth_header:
                 if not auth_header.startswith('Basic '):
@@ -156,19 +147,17 @@ class File_Manager:
                     return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
                 authenticated = self.authorize(auth_header, username)
                 if authenticated:
-                    if is_web is None or is_web is False:
-                        session_id, existed = self.session_manager.create_session(username[0], session_id)
-                        if session_id is None:
-                            headers['Content-Type'] = 'text/html'
-                            headers['Content-Length'] = str(len('session id not existed'))
-                            return HTTP.build_response(401, 'Unauthorized', headers, 'session id not existed')
-                        if not existed:
-                            headers['Set-Cookie'] = 'session-id=' + session_id
+                    session_id, existed = self.session_manager.create_session(username[0], cookie_data)
+                    if not existed:
+                        headers['Set-Cookie'] = 'session-id=' + session_id
+                        headers['Max-Age'] = str(self.session_manager.SESSION_TIMEOUT)
                 else:
-                    headers['Content-Length'] = str(len('Unauthorized'))
-                    return HTTP.build_response(401, 'Unauthorized', headers, 'Unauthorized')
-            elif session_id:
-                if not self.authorize_by_cookie(session_id):
+                    out = self.render.make_login()
+                    headers['Content-Length'] = str(len(out))
+                    headers['WWW-Authenticate'] = 'Basic realm="Authorization Required"'
+                    return HTTP.build_response(401, 'Unauthorized', headers, out)
+            elif cookie_data:
+                if not self.authorize_by_cookie(cookie_data):
                     out = self.render.make_login()
                     headers['Content-Length'] = str(len(out))
                     headers['WWW-Authenticate'] = 'Basic realm="Authorization Required"'
