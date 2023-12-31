@@ -1,9 +1,9 @@
 import base64
 import json
+import mimetypes
 import shutil
 import time
 from pathlib import Path
-from src.service.SessionManager import SessionManager
 from src.utils import HTML
 from src.protocol import HTTP
 
@@ -19,16 +19,6 @@ def find_relative_path_to_target_folder(path, target_folder_name):
         path = path.parent
     relative_path = original_path.relative_to(path.parent)
     return False, relative_path
-
-def find_relative_path_to_root_folder(path):
-    path = Path(path).resolve()
-    original_path = path
-    while path.name != 'data':
-        if path.parent == path:
-            return None
-        path = path.parent
-    relative_path = original_path.relative_to(path)
-    return relative_path
 
 
 def remove_boundary(data, boundary):
@@ -56,7 +46,6 @@ class File_Manager:
         self.base_path = Path(base_path)
         self.USERS_DB = self.load_user_db()
         self.render = HTML.html_render("templates", "template.html")
-        self.session_manager = SessionManager()
 
     def load_user_db(self):
         accounts_path = self.base_path / 'src' / 'service' / 'accounts.json'
@@ -67,6 +56,10 @@ class File_Manager:
             return {}
 
     def authorize(self, auth_header, ret_username):
+        if auth_header is None:
+            return False
+        if not auth_header.startswith('Basic '):
+            return False
         encoded_credentials = auth_header.split(' ')[1]
         decoded_credentials = base64.b64decode(encoded_credentials).decode('utf-8')
         username, password = decoded_credentials.split(':', 1)
@@ -78,13 +71,6 @@ class File_Manager:
                 return False
         else:
             return False
-
-    def authorize_by_cookie(self, cookie):
-        if self.session_manager.validate_session(cookie):
-            return True
-        else:
-            return False
-        
 
     def process(self, socket_conn, data, status: HTTP.HTTPStatus):
         headers = {}
@@ -127,38 +113,8 @@ class File_Manager:
         try:
             username = ['']
             auth_header = request.header.fields.get('Authorization')
-            session_id = request.header.fields.get('Cookie')
-            cookie_header = session_id.split('=')[0]
-            if cookie_header != 'session-id':
-                is_web = True
-            else:
-                is_web = False
-
-            session_id = session_id.split('=')[1]
-            if auth_header:
-                if not auth_header.startswith('Basic '):
-                    return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
-                authenticated= self.authorize(auth_header, username)
-                if authenticated:
-                    if is_web:
-                        pass
-                    else:
-                        session_id, existed = self.session_manager.create_session(username[0], session_id)
-                        if session_id == None:
-                            return HTTP.build_response(401, 'Unauthorized', headers, 'session id not existed')
-                        if not existed:
-                            headers['Set-Cookie'] = 'session-id='+session_id
-                else:
-                    return HTTP.build_response(401, 'Unauthorized', headers, 'Unauthorized')
-            elif session_id:
-                if not self.authorize_by_cookie(session_id):
-                    out = self.render.make_login()
-                    headers['Content-Type'] = 'text/html'
-                    headers['Content-Length'] = str(len(out))
-                    headers['WWW-Authenticate'] = 'Basic realm="Authorization Required"'
-                    return HTTP.build_response(401, 'Unauthorized', headers, out)
+            if auth_header and self.authorize(auth_header, username):
                 pass
-
             else:
                 out = self.render.make_login()
                 headers['Content-Type'] = 'text/html'
@@ -172,8 +128,6 @@ class File_Manager:
             if request.method == 'GET':
 
                 LIST_MODE = False
-                is_root = request.url == '' 
-
                 if (request.url.find('?') != -1):
                     relative_path, query = request.url.split('?', 1)
                     relative_path = Path(relative_path)
@@ -184,16 +138,24 @@ class File_Manager:
                         LIST_MODE = False
                     else:
                         return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
+                    is_root = relative_path.name == '' or relative_path.name == username[0]
                 else:
+                    is_root = request.url == '' or request.url == username[0]
                     relative_path = Path(request.url)
 
                 if not (dir_path / username[0]).exists():
                     (dir_path / username[0]).mkdir()
 
-                file_path = dir_path / relative_path
-                relative_path = find_relative_path_to_root_folder(file_path)
-                if relative_path is None:
-                    return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
+                if is_root:
+                    file_path = dir_path / username[0]
+                    relative_path = Path(username[0])
+                else:
+                    file_path = dir_path / relative_path
+                    is_forbidden, relative_path = find_relative_path_to_target_folder(file_path, username[0])
+                    if is_forbidden:
+                        return HTTP.build_response(403, 'Forbidden', headers, 'Forbidden')
+                    if relative_path is None:
+                        return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
 
                 if file_path.is_dir():
                     files_and_dirs = list(file_path.iterdir())
@@ -218,37 +180,69 @@ class File_Manager:
                         return HTTP.build_response(200, 'OK', headers, out)
 
                 elif file_path.is_file():
-                    content_type = 'application/octet-stream'
+                    content_type = mimetypes.guess_type(file_path)[0]
                     content_disposition = f'attachment; filename="{file_path.name}"'
                     if file_path.name.endswith('favicon.ico'):
                         content_type = 'image/x-icon'
-                    file_length = Path(file_path).stat().st_size
-                    if file_length > 1024 * 1024 * 10:
-                        headers['Transfer-Encoding'] = 'chunked'
-                        headers['Content-Type'] = content_type
-                        headers['Content-Disposition'] = content_disposition
-                        chunk_size = 1024 * 16
-                        print(hex(chunk_size))
-                        with file_path.open('rb') as file:
-                            print("file_length: ", file_length // 1024 // 1024, "MB")
-                            chunk_num = Path(file_path).stat().st_size // chunk_size
-                            socket_conn.send(HTTP.build_response(200, 'OK', headers).encode())
-                            size_header = hex(chunk_size)[2:].encode() + b'\r\n'
-                            for _ in range(chunk_num):
-                                socket_conn.send(size_header + file.read(chunk_size) + b'\r\n')
-                            if file_length % chunk_size != 0:
-                                print(f"send {file_length % chunk_size} bytes, last chunk")
-                                size_header = hex(file_length % chunk_size)[2:].encode() + b'\r\n'
-                                socket_conn.send(size_header + file.read() + b'\r\n')
-                        socket_conn.send(b'0\r\n\r\n')
-                        return None
-                    else:
-                        with file_path.open('rb') as file:
-                            file_content = file.read()
-                        headers['Content-Type'] = content_type
-                        headers['Content-Length'] = str(len(file_content))
-                        headers['Content-Disposition'] = content_disposition
-                        return HTTP.build_response(200, 'OK', headers), file_content
+                    with file_path.open('rb') as file:
+                        file_content = file.read()
+                    range_header = request.header.fields.get('Range')
+                    if range_header:
+                        range_list = range_header.split(',')
+                        if len(range_list) == 1:
+                            try:
+                                start, end = range_list[0].split('-')
+                                start = int(start) if start else 0
+                                end = int(end) if end else len(file_content) - 1
+                                if end == -1:
+                                    end = len(file_content) - 1
+                                if start > end or end >= len(file_content):
+                                    raise ValueError("Invalid range")
+                                headers['Content-Type'] = content_type
+                                headers['Content-Length'] = str(end - start + 1)
+                                headers['Content-Disposition'] = content_disposition
+                                return HTTP.build_response(206, 'Partial Content', headers), file_content[start:end + 1]
+                            except ValueError:
+                                return HTTP.build_response(416, 'Range Not Satisfiable', headers,
+                                                           'Range Not Satisfiable')
+                        else:
+                            boundary = 'THISISMYSELFDIFINEDBOUNDARY'
+                            multipart_content = []
+
+                            for range_spec in range_list:
+                                try:
+                                    start_str, end_str = range_spec.split('-')
+                                    start = int(start_str) if start_str else 0
+                                    end = int(end_str) if end_str else len(file_content) - 1
+                                    if end == -1:
+                                        end = len(file_content) - 1
+
+                                    if start > end or end >= len(file_content):
+                                        raise ValueError("Invalid range")
+
+                                    range_content = file_content[start:end + 1]
+                                    content_range_header = f'bytes {start}-{end}/{len(file_content)}'
+
+                                    part_headers = f'--{boundary}\r\n'
+                                    part_headers += f'Content-Type: {content_type}\r\n'
+                                    part_headers += f'Content-Range: {content_range_header}\r\n\r\n'
+                                    multipart_content.append(part_headers.encode() + range_content + b'\r\n')
+
+                                except ValueError:
+                                    continue
+
+                            if multipart_content:
+                                full_response = b''.join(multipart_content) + f'--{boundary}--'.encode()
+                                headers['Content-Type'] = f'multipart/byteranges; boundary={boundary}'
+                                headers['Content-Length'] = str(len(full_response))
+                                return HTTP.build_response(206, 'Partial Content', headers), full_response
+                            else:
+                                return HTTP.build_response(416, 'Range Not Satisfiable', headers, 'Invalid Range')
+
+                    headers['Content-Type'] = content_type
+                    headers['Content-Length'] = str(len(file_content))
+                    headers['Content-Disposition'] = content_disposition
+                    return HTTP.build_response(200, 'OK', headers), file_content
                 else:
                     return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
 
@@ -263,7 +257,6 @@ class File_Manager:
 
                 is_forbidden, _ = find_relative_path_to_target_folder(file_path, username[0])
                 if is_forbidden:
-                    headers['Content-Type'] = 'text/html'
                     return HTTP.build_response(403, 'Forbidden', headers, 'Forbidden')
 
                 if method == 'upload':
