@@ -244,12 +244,14 @@ class File_Manager:
                     headers['Content-Disposition'] = content_disposition
                     return HTTP.build_response(200, 'OK', headers), file_content
                 else:
+                    headers['Content-Length'] = str(len('File Not Found'))
                     return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
 
             elif request.method == 'POST':
                 method, relative_path = request.url.split('?', 1)
                 path_flag, relative_path = relative_path.split('=', 1)
                 if path_flag != 'path':
+                    headers['Content-Length'] = str(len('Bad Request'))
                     return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
                 relative_path = Path(relative_path)
 
@@ -257,21 +259,26 @@ class File_Manager:
 
                 is_forbidden, _ = find_relative_path_to_target_folder(file_path, username[0])
                 if is_forbidden:
+                    headers['Content-Length'] = str(len('Forbidden'))
                     return HTTP.build_response(403, 'Forbidden', headers, 'Forbidden')
 
                 if method == 'upload':
                     if not request.body_without_boundary:
+                        headers['Content-Length'] = str(len('No Data to Save'))
                         return HTTP.build_response(400, 'Bad Request', headers, 'No Data to Save')
                     if file_path.is_dir():
+                        headers['Content-Length'] = str(len('Invalid File Path'))
                         return HTTP.build_response(400, 'Bad Request', headers, 'Invalid File Path')
                     begin_time = time.time()
                     with file_path.open('wb') as file:
                         file.write(request.body_without_boundary)
                     print(f"save cost {time.time() - begin_time} s")
+                    headers['Content-Length'] = str(len('File Saved'))
                     return HTTP.build_response(200, 'OK', headers, 'File Saved')
 
                 elif method == 'delete':
                     if not file_path.exists():
+                        headers['Content-Length'] = str(len('File Not Found'))
                         return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
                     if file_path.is_dir():
                         shutil.rmtree(file_path)
@@ -291,11 +298,14 @@ class File_Manager:
                     headers['Content-Length'] = str(len(out))
                     return HTTP.build_response(200, 'OK', headers, out)
                 else:
+                    headers['Content-Length'] = str(len('Bad Request'))
                     return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
 
             else:
+                headers['Content-Length'] = str(len('Method Not Allowed'))
                 return HTTP.build_response(405, 'Method Not Allowed', headers, 'Method Not Allowed')
 
         except Exception as e:
             print(f'file manager error: {e}')
+            headers['Content-Length'] = str(len(str(e)))
             return HTTP.build_response(500, 'Internal Server Error', headers, str(e))
