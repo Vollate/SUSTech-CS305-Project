@@ -20,6 +20,18 @@ def find_relative_path_to_target_folder(path, target_folder_name):
     relative_path = original_path.relative_to(path.parent)
     return False, relative_path
 
+
+def find_relative_path_to_root_folder(path):
+    path = Path(path).resolve()
+    original_path = path
+    while path.name != 'data':
+        if path.parent == path:
+            return None
+        path = path.parent
+    relative_path = original_path.relative_to(path)
+    return relative_path
+
+
 def find_relative_path_to_root_folder(path):
     path = Path(path).resolve()
     original_path = path
@@ -85,7 +97,6 @@ class File_Manager:
         else:
             return False
 
-
     def process(self, socket_conn, data, status: HTTP.HTTPStatus):
         headers = {}
         request = HTTP.HTTP_Request()
@@ -128,26 +139,27 @@ class File_Manager:
             username = ['']
             auth_header = request.header.fields.get('Authorization')
             session_id = request.header.fields.get('Cookie')
-            cookie_header = session_id.split('=')[0]
-            if cookie_header != 'session-id':
-                is_web = True
-            else:
-                is_web = False
 
-            session_id = session_id.split('=')[1]
+            is_web = None
+            if session_id:
+                cookie_header = session_id.split('=')[0]
+                if cookie_header != 'session-id':
+                    is_web = True
+                else:
+                    session_id = session_id.split('=')[1]
+                    is_web = False
+
             if auth_header:
                 if not auth_header.startswith('Basic '):
                     return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
-                authenticated= self.authorize(auth_header, username)
+                authenticated = self.authorize(auth_header, username)
                 if authenticated:
-                    if is_web:
-                        pass
-                    else:
+                    if is_web is None or is_web is False:
                         session_id, existed = self.session_manager.create_session(username[0], session_id)
-                        if session_id == None:
+                        if session_id is None:
                             return HTTP.build_response(401, 'Unauthorized', headers, 'session id not existed')
                         if not existed:
-                            headers['Set-Cookie'] = 'session-id='+session_id
+                            headers['Set-Cookie'] = 'session-id=' + session_id
                 else:
                     return HTTP.build_response(401, 'Unauthorized', headers, 'Unauthorized')
             elif session_id:
@@ -174,7 +186,7 @@ class File_Manager:
                 LIST_MODE = False
                 is_root = request.url == ''
 
-                if (request.url.find('?') != -1):
+                if request.url.find('?') != -1:
                     relative_path, query = request.url.split('?', 1)
                     relative_path = Path(relative_path)
                     query, id = query.split('=', 1)
@@ -183,6 +195,7 @@ class File_Manager:
                     elif query == 'SUSTech-HTTP' and id == '0':
                         LIST_MODE = False
                     else:
+                        headers['Content-Type'] = 'text/html'
                         return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
                 else:
                     relative_path = Path(request.url)
@@ -193,6 +206,7 @@ class File_Manager:
                 file_path = dir_path / relative_path
                 relative_path = find_relative_path_to_root_folder(file_path)
                 if relative_path is None:
+                    headers['Content-Type'] = 'text/html'
                     return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
 
                 if file_path.is_dir():
@@ -202,7 +216,7 @@ class File_Manager:
                     if LIST_MODE:
                         formatted_list = [f.name + '/' if f.is_dir() else f.name for f in files_and_dirs]
                         headers['Content-Type'] = 'text/html'
-                        headers['Content-Length'] = len(str(formatted_list))
+                        headers['Content-Length'] = str(len(str(formatted_list)))
                         return HTTP.build_response(200, 'OK', headers), str(formatted_list).encode()
                     else:
                         formatted_list = []
@@ -228,7 +242,6 @@ class File_Manager:
                         headers['Content-Type'] = content_type
                         headers['Content-Disposition'] = content_disposition
                         chunk_size = 1024 * 16
-                        print(hex(chunk_size))
                         with file_path.open('rb') as file:
                             print("file_length: ", file_length // 1024 // 1024, "MB")
                             chunk_num = Path(file_path).stat().st_size // chunk_size
@@ -237,7 +250,6 @@ class File_Manager:
                             for _ in range(chunk_num):
                                 socket_conn.send(size_header + file.read(chunk_size) + b'\r\n')
                             if file_length % chunk_size != 0:
-                                print(f"send {file_length % chunk_size} bytes, last chunk")
                                 size_header = hex(file_length % chunk_size)[2:].encode() + b'\r\n'
                                 socket_conn.send(size_header + file.read() + b'\r\n')
                         socket_conn.send(b'0\r\n\r\n')
@@ -250,12 +262,15 @@ class File_Manager:
                         headers['Content-Disposition'] = content_disposition
                         return HTTP.build_response(200, 'OK', headers), file_content
                 else:
+                    headers['Content-Type'] = 'text/html'
+                    headers['Content-Length'] = str(len('File Not Found'))
                     return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
 
             elif request.method == 'POST':
                 method, relative_path = request.url.split('?', 1)
                 path_flag, relative_path = relative_path.split('=', 1)
                 if path_flag != 'path':
+                    headers['Content-Length'] = str(len('Bad Request'))
                     return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
                 relative_path = Path(relative_path)
 
