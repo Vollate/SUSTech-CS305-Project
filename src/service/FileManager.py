@@ -20,6 +20,7 @@ def find_relative_path_to_target_folder(path, target_folder_name):
     relative_path = original_path.relative_to(path.parent)
     return False, relative_path
 
+
 def find_relative_path_to_root_folder(path):
     path = Path(path).resolve()
     original_path = path
@@ -87,6 +88,8 @@ class File_Manager:
         
 
     def process(self, socket_conn, data, status: HTTP.HTTPStatus):
+
+
         headers = {}
         request = HTTP.HTTP_Request()
         if status.receive_partially:
@@ -128,21 +131,22 @@ class File_Manager:
             username = ['']
             auth_header = request.header.fields.get('Authorization')
             session_id = request.header.fields.get('Cookie')
-            cookie_header = session_id.split('=')[0]
-            if cookie_header != 'session-id':
-                is_web = True
-            else:
-                is_web = False
+            
+            is_web = None
+            if session_id:
+                cookie_header = session_id.split('=')[0]
+                if cookie_header != 'session-id':
+                    is_web = True
+                else:
+                    session_id = session_id.split('=')[1]
+                    is_web = False
 
-            session_id = session_id.split('=')[1]
             if auth_header:
                 if not auth_header.startswith('Basic '):
                     return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
                 authenticated= self.authorize(auth_header, username)
                 if authenticated:
-                    if is_web:
-                        pass
-                    else:
+                    if is_web is None or is_web is False:
                         session_id, existed = self.session_manager.create_session(username[0], session_id)
                         if session_id == None:
                             return HTTP.build_response(401, 'Unauthorized', headers, 'session id not existed')
@@ -183,6 +187,7 @@ class File_Manager:
                     elif query == 'SUSTech-HTTP' and id == '0':
                         LIST_MODE = False
                     else:
+                        headers['Content-Type'] = 'text/html'
                         return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
                 else:
                     relative_path = Path(request.url)
@@ -193,6 +198,7 @@ class File_Manager:
                 file_path = dir_path / relative_path
                 relative_path = find_relative_path_to_root_folder(file_path)
                 if relative_path is None:
+                    headers['Content-Type'] = 'text/html'
                     return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
 
                 if file_path.is_dir():
@@ -250,6 +256,7 @@ class File_Manager:
                         headers['Content-Disposition'] = content_disposition
                         return HTTP.build_response(200, 'OK', headers), file_content
                 else:
+                    headers['Content-Type'] = 'text/html'
                     return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
 
             elif request.method == 'POST':
