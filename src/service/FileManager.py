@@ -214,6 +214,7 @@ class File_Manager:
                     return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
 
             elif request.method == 'POST':
+                status.oneshot = True
                 method, relative_path = request.url.split('?', 1)
                 path_flag, relative_path = relative_path.split('=', 1)
                 if path_flag != 'path':
