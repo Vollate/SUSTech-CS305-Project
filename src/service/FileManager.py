@@ -274,9 +274,12 @@ class File_Manager:
             elif request.method == 'POST':
                 method, relative_path = request.url.split('?', 1)
                 path_flag, relative_path = relative_path.split('=', 1)
+                print(f"relative_path: {relative_path}")
                 if path_flag != 'path':
                     headers['Content-Length'] = str(len('Bad Request'))
                     return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
+                if relative_path[0] != '/':
+                    relative_path = '/' + relative_path
                 relative_path = Path(relative_path)
 
                 file_path = Path(str(dir_path) + str(relative_path))

@@ -256,6 +256,7 @@ class File_Manager:
                 relative_path = Path(relative_path)
 
                 file_path = Path(str(dir_path) + str(relative_path))
+                print(file_path)
 
                 is_forbidden, _ = find_relative_path_to_target_folder(file_path, username[0])
                 if is_forbidden:
