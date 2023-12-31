@@ -20,6 +20,16 @@ def find_relative_path_to_target_folder(path, target_folder_name):
     relative_path = original_path.relative_to(path.parent)
     return False, relative_path
 
+def find_relative_path_to_root_folder(path):
+    path = Path(path).resolve()
+    original_path = path
+    while path.name != 'data':
+        if path.parent == path:
+            return None
+        path = path.parent
+    relative_path = original_path.relative_to(path)
+    return relative_path
+
 
 def remove_boundary(data, boundary):
     tmp = data.split(b'\r\n--' + boundary.encode() + b'--\r\n')
@@ -56,28 +66,25 @@ class File_Manager:
         except FileNotFoundError:
             return {}
 
-    def authorize(self, auth_header, ret_username, cookies=None):
-        if auth_header is None:
-            return False
-        if not auth_header.startswith('Basic '):
-            return False
+    def authorize(self, auth_header, ret_username):
         encoded_credentials = auth_header.split(' ')[1]
         decoded_credentials = base64.b64decode(encoded_credentials).decode('utf-8')
         username, password = decoded_credentials.split(':', 1)
         if username in self.USERS_DB:
             if self.USERS_DB[username] == password:
                 ret_username[0] = username
-                if cookies is None:
-                    return False
-                if self.session_manager.validate_session(cookies.get('session-id')):
-                    pass
-                else:
-                    self.session_manager.create_session(username)
                 return True
             else:
                 return False
         else:
             return False
+
+    def authorize_by_cookie(self, cookie):
+        if self.session_manager.validate_session(cookie):
+            return True
+        else:
+            return False
+        
 
     def process(self, socket_conn, data, status: HTTP.HTTPStatus):
         headers = {}
@@ -120,14 +127,43 @@ class File_Manager:
         try:
             username = ['']
             auth_header = request.header.fields.get('Authorization')
-            if auth_header and self.authorize(auth_header, username, request.header.fields.get('Cookie')):
+            session_id = request.header.fields.get('Cookie')
+            cookie_header = session_id.split('=')[0]
+            if cookie_header != 'session-id':
+                is_web = True
+            else:
+                is_web = False
+
+            session_id = session_id.split('=')[1]
+            if auth_header:
+                if not auth_header.startswith('Basic '):
+                    return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
+                authenticated= self.authorize(auth_header, username)
+                if authenticated:
+                    if is_web:
+                        pass
+                    else:
+                        session_id, existed = self.session_manager.create_session(username[0], session_id)
+                        if session_id == None:
+                            return HTTP.build_response(401, 'Unauthorized', headers, 'session id not existed')
+                        if not existed:
+                            headers['Set-Cookie'] = 'session-id='+session_id
+                else:
+                    return HTTP.build_response(401, 'Unauthorized', headers, 'Unauthorized')
+            elif session_id:
+                if not self.authorize_by_cookie(session_id):
+                    out = self.render.make_login()
+                    headers['Content-Type'] = 'text/html'
+                    headers['Content-Length'] = str(len(out))
+                    headers['WWW-Authenticate'] = 'Basic realm="Authorization Required"'
+                    return HTTP.build_response(401, 'Unauthorized', headers, out)
                 pass
+
             else:
                 out = self.render.make_login()
                 headers['Content-Type'] = 'text/html'
                 headers['Content-Length'] = str(len(out))
                 headers['WWW-Authenticate'] = 'Basic realm="Authorization Required"'
-                headers['Set-Cookie'] = 'session-id=' + self.session_manager.create_session(username[0])
                 return HTTP.build_response(401, 'Unauthorized', headers, out)
 
             request.url = request.url.strip('/')
@@ -136,6 +172,8 @@ class File_Manager:
             if request.method == 'GET':
 
                 LIST_MODE = False
+                is_root = request.url == '' 
+
                 if (request.url.find('?') != -1):
                     relative_path, query = request.url.split('?', 1)
                     relative_path = Path(relative_path)
@@ -146,24 +184,16 @@ class File_Manager:
                         LIST_MODE = False
                     else:
                         return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
-                    is_root = relative_path.name == '' or relative_path.name == username[0]
                 else:
-                    is_root = request.url == '' or request.url == username[0]
                     relative_path = Path(request.url)
 
                 if not (dir_path / username[0]).exists():
                     (dir_path / username[0]).mkdir()
 
-                if is_root:
-                    file_path = dir_path / username[0]
-                    relative_path = Path(username[0])
-                else:
-                    file_path = dir_path / relative_path
-                    is_forbidden, relative_path = find_relative_path_to_target_folder(file_path, username[0])
-                    if is_forbidden:
-                        return HTTP.build_response(403, 'Forbidden', headers, 'Forbidden')
-                    if relative_path is None:
-                        return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
+                file_path = dir_path / relative_path
+                relative_path = find_relative_path_to_root_folder(file_path)
+                if relative_path is None:
+                    return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
 
                 if file_path.is_dir():
                     files_and_dirs = list(file_path.iterdir())
@@ -287,6 +317,7 @@ class File_Manager:
 
                 is_forbidden, _ = find_relative_path_to_target_folder(file_path, username[0])
                 if is_forbidden:
+                    headers['Content-Type'] = 'text/html'
                     return HTTP.build_response(403, 'Forbidden', headers, 'Forbidden')
 
                 if method == 'upload':

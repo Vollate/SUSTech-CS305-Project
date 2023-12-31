@@ -81,7 +81,7 @@ class TCPServer:
         with client_socket:
             key = establish_encrypted_connection(client_socket) if self.encrypt_enable else None
             while not status.oneshot or status.receive_partially:
-                data = client_socket.recv(10240000000)
+                data = client_socket.recv(102400)
                 if not data:
                     break
                 if self.encrypt_enable:
@@ -102,8 +102,8 @@ class TCPServer:
             except OSError:
                 break
             print(f"Connected to {addr}")
-            # self.handle_client(client_socket)
-            self.thread_pool.submit(lambda: self.handle_client(client_socket))
+            self.handle_client(client_socket)
+            # self.thread_pool.submit(lambda: self.handle_client(client_socket))
 
     def stop(self):
         self.running = False
