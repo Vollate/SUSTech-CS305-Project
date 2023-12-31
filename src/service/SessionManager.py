@@ -31,7 +31,7 @@ class SessionManager:
             return False
         session_data = self.sessions.get(session_id)
         if session_data:
-            if session_data['timestamp'] - time.time() > SESSION_TIMEOUT:
+            if session_data['timestamp'] - time.time() > self.SESSION_TIMEOUT:
                 del self.sessions[session_id]
                 return False
             return True
