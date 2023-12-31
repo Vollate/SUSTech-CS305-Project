@@ -184,6 +184,7 @@ class File_Manager:
             if request.method == 'GET':
 
                 LIST_MODE = False
+                CHUNKED_MODE = False
                 is_root = request.url == ''
 
                 if request.url.find('?') != -1:
@@ -194,6 +195,10 @@ class File_Manager:
                         LIST_MODE = True
                     elif query == 'SUSTech-HTTP' and id == '0':
                         LIST_MODE = False
+                    elif query == 'chunked' and id == '1':
+                        CHUNKED_MODE = True
+                    elif query == 'chunked' and id == '0':
+                        CHUNKED_MODE = False
                     else:
                         headers['Content-Type'] = 'text/html'
                         return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
@@ -237,13 +242,13 @@ class File_Manager:
                     if file_path.name.endswith('favicon.ico'):
                         content_type = 'image/x-icon'
                     file_length = Path(file_path).stat().st_size
-                    if file_length > 1024 * 1024 * 10:
+                    if file_length > 1024 * 1024 * 10 or CHUNKED_MODE:
                         headers['Transfer-Encoding'] = 'chunked'
                         headers['Content-Type'] = content_type
                         headers['Content-Disposition'] = content_disposition
                         chunk_size = 1024 * 16
                         with file_path.open('rb') as file:
-                            print("file_length: ", file_length // 1024 // 1024, "MB")
+                            print("file_length: ", file_length, "Byte")
                             chunk_num = Path(file_path).stat().st_size // chunk_size
                             socket_conn.send(HTTP.build_response(200, 'OK', headers).encode())
                             size_header = hex(chunk_size)[2:].encode() + b'\r\n'
