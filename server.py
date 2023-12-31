@@ -17,7 +17,7 @@ argv = parser.parse_args()
 
 base_path = Path(__file__).resolve().parent
 fm = FileManager.File_Manager(base_path)
-tcp_server = TCP.TCPServer(argv.i, argv.p, ThreadPool.ThreadPool(1000), fm, argv.e)
+tcp_server = TCP.TCPServer(argv.i, argv.p, ThreadPool.ThreadPool(1), fm, argv.e)
 
 
 def signal_handler(sig, frame):
