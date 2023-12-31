@@ -272,6 +272,25 @@ class File_Manager:
                     return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
 
             elif request.method == 'POST':
+                if "?" not in request.url:
+                    file_path = Path(str(dir_path) + str(request.url))
+                    if file_path.is_dir():
+                        headers['Content-Type'] = 'text/html'
+                        headers['Content-Length'] = str(len('Directory'))
+                        return HTTP.build_response(200, 'OK', headers, 'Directory')
+                    elif file_path.is_file():
+                        content_type = 'application/octet-stream'
+                        content_disposition = f'attachment; filename="{file_path.name}"'
+                        if file_path.name.endswith('favicon.ico'):
+                            content_type = 'image/x-icon'
+                        file_length = Path(file_path).stat().st_size
+                        headers['Content-Type'] = content_type
+                        headers['Content-Length'] = str(file_length)
+                        headers['Content-Disposition'] = content_disposition
+                        return HTTP.build_response(200, 'OK', headers)
+                    else:
+                        headers['Content-Length'] = str(len('File Not Found'))
+                        return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
                 method, relative_path = request.url.split('?', 1)
                 path_flag, relative_path = relative_path.split('=', 1)
                 print(f"relative_path: {relative_path}")
