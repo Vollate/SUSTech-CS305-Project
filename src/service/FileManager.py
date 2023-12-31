@@ -100,6 +100,7 @@ class File_Manager:
     def process(self, socket_conn, data, status: HTTP.HTTPStatus):
         headers = {}
         request = HTTP.HTTP_Request()
+        headers['Content-Type'] = 'text/html'
         if status.receive_partially:
             status.current_receive_size += len(data)
             status.receive_buffer += data
@@ -151,21 +152,24 @@ class File_Manager:
 
             if auth_header:
                 if not auth_header.startswith('Basic '):
+                    headers['Content-Length'] = str(len('Bad Request'))
                     return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
                 authenticated = self.authorize(auth_header, username)
                 if authenticated:
                     if is_web is None or is_web is False:
                         session_id, existed = self.session_manager.create_session(username[0], session_id)
                         if session_id is None:
+                            headers['Content-Type'] = 'text/html'
+                            headers['Content-Length'] = str(len('session id not existed'))
                             return HTTP.build_response(401, 'Unauthorized', headers, 'session id not existed')
                         if not existed:
                             headers['Set-Cookie'] = 'session-id=' + session_id
                 else:
+                    headers['Content-Length'] = str(len('Unauthorized'))
                     return HTTP.build_response(401, 'Unauthorized', headers, 'Unauthorized')
             elif session_id:
                 if not self.authorize_by_cookie(session_id):
                     out = self.render.make_login()
-                    headers['Content-Type'] = 'text/html'
                     headers['Content-Length'] = str(len(out))
                     headers['WWW-Authenticate'] = 'Basic realm="Authorization Required"'
                     return HTTP.build_response(401, 'Unauthorized', headers, out)
@@ -173,7 +177,6 @@ class File_Manager:
 
             else:
                 out = self.render.make_login()
-                headers['Content-Type'] = 'text/html'
                 headers['Content-Length'] = str(len(out))
                 headers['WWW-Authenticate'] = 'Basic realm="Authorization Required"'
                 return HTTP.build_response(401, 'Unauthorized', headers, out)
@@ -200,7 +203,7 @@ class File_Manager:
                     elif query == 'chunked' and id == '0':
                         CHUNKED_MODE = False
                     else:
-                        headers['Content-Type'] = 'text/html'
+                        headers['Content-Length'] = str(len('Bad Request'))
                         return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
                 else:
                     relative_path = Path(request.url)
@@ -211,7 +214,7 @@ class File_Manager:
                 file_path = dir_path / relative_path
                 relative_path = find_relative_path_to_root_folder(file_path)
                 if relative_path is None:
-                    headers['Content-Type'] = 'text/html'
+                    headers['Content-Length'] = str(len('File Not Found'))
                     return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
 
                 if file_path.is_dir():
@@ -220,7 +223,6 @@ class File_Manager:
                     # SUSTech-HTTP
                     if LIST_MODE:
                         formatted_list = [f.name + '/' if f.is_dir() else f.name for f in files_and_dirs]
-                        headers['Content-Type'] = 'text/html'
                         headers['Content-Length'] = str(len(str(formatted_list)))
                         return HTTP.build_response(200, 'OK', headers), str(formatted_list).encode()
                     else:
@@ -232,7 +234,6 @@ class File_Manager:
                                             "name": f.name + '/'} if f.is_dir() else {
                             "path": '/' + str(relative_path) + '/' + f.name, "name": f.name} for f in files_and_dirs]
                         out = self.render.make_main_page('/' + str(relative_path), formatted_list)
-                        headers['Content-Type'] = 'text/html'
                         headers['Content-Length'] = str(len(out))
                         return HTTP.build_response(200, 'OK', headers, out)
 
@@ -267,7 +268,6 @@ class File_Manager:
                         headers['Content-Disposition'] = content_disposition
                         return HTTP.build_response(200, 'OK', headers), file_content
                 else:
-                    headers['Content-Type'] = 'text/html'
                     headers['Content-Length'] = str(len('File Not Found'))
                     return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
 
@@ -275,7 +275,6 @@ class File_Manager:
                 if "?" not in request.url:
                     file_path = Path(str(dir_path) + str(request.url))
                     if file_path.is_dir():
-                        headers['Content-Type'] = 'text/html'
                         headers['Content-Length'] = str(len('Directory'))
                         return HTTP.build_response(200, 'OK', headers, 'Directory')
                     elif file_path.is_file():
@@ -342,7 +341,6 @@ class File_Manager:
                     formatted_list += [{"path": str(relative_path.parent) + '/' + f.name, "name": f.name} for f in
                                        files_and_dirs]
                     out = self.render.make_main_page(str(relative_path), formatted_list)
-                    headers['Content-Type'] = 'text/html'
                     headers['Content-Length'] = str(len(out))
                     return HTTP.build_response(200, 'OK', headers, out)
                 else:
@@ -352,7 +350,6 @@ class File_Manager:
             elif request.method == 'HEAD':
                 file_path = Path(str(dir_path) + str(request.url))
                 if file_path.is_dir():
-                    headers['Content-Type'] = 'text/html'
                     headers['Content-Length'] = str(len('Directory'))
                     return HTTP.build_response(200, 'OK', headers, 'Directory')
                 elif file_path.is_file():
@@ -368,11 +365,12 @@ class File_Manager:
                 else:
                     headers['Content-Length'] = str(len('File Not Found'))
                     return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
-                
+
             else:
                 headers['Content-Length'] = str(len('Method Not Allowed'))
                 return HTTP.build_response(405, 'Method Not Allowed', headers, 'Method Not Allowed')
 
         except Exception as e:
             print(f'file manager error: {e}')
+            headers['Content-Length'] = str(len(str(e)))
             return HTTP.build_response(500, 'Internal Server Error', headers, str(e))
