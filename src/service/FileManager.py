@@ -322,6 +322,26 @@ class File_Manager:
                     headers['Content-Length'] = str(len('Bad Request'))
                     return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
 
+            elif request.method == 'HEAD':
+                file_path = Path(str(dir_path) + str(request.url))
+                if file_path.is_dir():
+                    headers['Content-Type'] = 'text/html'
+                    headers['Content-Length'] = str(len('Directory'))
+                    return HTTP.build_response(200, 'OK', headers, 'Directory')
+                elif file_path.is_file():
+                    content_type = 'application/octet-stream'
+                    content_disposition = f'attachment; filename="{file_path.name}"'
+                    if file_path.name.endswith('favicon.ico'):
+                        content_type = 'image/x-icon'
+                    file_length = Path(file_path).stat().st_size
+                    headers['Content-Type'] = content_type
+                    headers['Content-Length'] = str(file_length)
+                    headers['Content-Disposition'] = content_disposition
+                    return HTTP.build_response(200, 'OK', headers)
+                else:
+                    headers['Content-Length'] = str(len('File Not Found'))
+                    return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
+                
             else:
                 headers['Content-Length'] = str(len('Method Not Allowed'))
                 return HTTP.build_response(405, 'Method Not Allowed', headers, 'Method Not Allowed')
