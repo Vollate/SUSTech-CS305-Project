@@ -6,7 +6,7 @@ def test_breakpoint():
     addr = "127.0.0.1"
     port = 11451
     print(pathlib.Path(__file__).parent.resolve())
-    url = f"http://{addr}:{port}/123/a.txt"
+    url = f"http://{addr}:{port}/client1/a.txt"
     data = {}
     headers = {"Authorization": "Basic MTIzOjEyMw==", "Range": "0-1,1-2,2-3"}
     r = requests.get(url=url, data=data, headers=headers)
