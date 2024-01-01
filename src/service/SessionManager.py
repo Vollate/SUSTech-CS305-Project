@@ -1,6 +1,7 @@
 import time
 import uuid
 
+
 class SessionManager:
     def __init__(self):
         self.sessions = {}
@@ -23,7 +24,6 @@ class SessionManager:
             session_id = str(uuid.uuid4())
             self.sessions[session_id] = {'username': username, 'timestamp': time.time()}
             return session_id, False
-
 
     def validate_session(self, cookie_data):
         session_id = cookie_data.split('=')[1]

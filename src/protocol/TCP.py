@@ -81,7 +81,7 @@ class TCPServer:
         with client_socket:
             key = establish_encrypted_connection(client_socket) if self.encrypt_enable else None
             while not status.oneshot or status.receive_partially:
-                data = client_socket.recv(102400)
+                data = client_socket.recv(102400000)
                 if not data:
                     break
                 if self.encrypt_enable:

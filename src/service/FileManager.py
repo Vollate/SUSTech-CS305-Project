@@ -1,5 +1,6 @@
 import base64
 import json
+import mimetypes
 import shutil
 import time
 from pathlib import Path
@@ -53,8 +54,10 @@ def remove_boundary(data, boundary):
 
 def remove_double_boundary(data, boundary):
     tmp = data.split(b'\r\n--' + boundary.encode() + b'--\r\n')
-    res = tmp[0].split(b'\r\n\r\n', 1)[1]
-    return res
+    return tmp[0].split(b'\r\n\r\n', 1)[1]
+    # res = tmp[1]
+    # filename = tmp[0].split(b'filename="', 1)[1].split(b'"', 1)[0].decode()
+    # return res, filename
 
 
 def get_boundary(request):
@@ -135,7 +138,8 @@ class File_Manager:
                 status.start_time = time.time()
                 return None
             elif request.header.fields.get('Content-Type', '').startswith('multipart/form-data'):
-                request.body_without_boundary = remove_double_boundary(request.body, get_boundary(request))
+                request.body_without_boundary = remove_double_boundary(request.body,
+                                                                                         get_boundary(request))
         try:
             username = ['']
             auth_header = request.header.fields.get('Authorization')
@@ -169,12 +173,10 @@ class File_Manager:
                 headers['Content-Length'] = str(len(out))
                 headers['WWW-Authenticate'] = 'Basic realm="Authorization Required"'
                 return HTTP.build_response(401, 'Unauthorized', headers, out)
-
             request.url = request.url.strip('/')
             dir_path = self.base_path / 'data'
 
             if request.method == 'GET':
-
                 LIST_MODE = False
                 CHUNKED_MODE = False
                 is_root = request.url == ''
@@ -227,10 +229,11 @@ class File_Manager:
                         return HTTP.build_response(200, 'OK', headers, out)
 
                 elif file_path.is_file():
-                    content_type = 'application/octet-stream'
+                    # content_type = 'application/octet-stream'
+                    content_type = mimetypes.guess_type(file_path)[0]
                     content_disposition = f'attachment; filename="{file_path.name}"'
-                    if file_path.name.endswith('favicon.ico'):
-                        content_type = 'image/x-icon'
+                    # if file_path.name.endswith('favicon.ico'):
+                    #     content_type = 'image/x-icon'
                     file_length = Path(file_path).stat().st_size
                     if file_length > 1024 * 1024 * 10 or CHUNKED_MODE:
                         headers['Transfer-Encoding'] = 'chunked'
@@ -301,11 +304,12 @@ class File_Manager:
                     if not request.body_without_boundary:
                         headers['Content-Length'] = str(len('No Data to Save'))
                         return HTTP.build_response(400, 'Bad Request', headers, 'No Data to Save')
-                    if file_path.is_dir():
+                    if not file_path.is_dir():
                         headers['Content-Length'] = str(len('Invalid File Path'))
                         return HTTP.build_response(400, 'Bad Request', headers, 'Invalid File Path')
                     begin_time = time.time()
-                    with file_path.open('wb') as file:
+                    full_path = file_path / request.filename
+                    with full_path.open('wb') as file:
                         file.write(request.body_without_boundary)
                     print(f"save cost {time.time() - begin_time} s")
                     headers['Content-Type'] = 'text/html'
