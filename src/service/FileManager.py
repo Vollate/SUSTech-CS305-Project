@@ -33,17 +33,6 @@ def find_relative_path_to_root_folder(path):
     return relative_path
 
 
-def find_relative_path_to_root_folder(path):
-    path = Path(path).resolve()
-    original_path = path
-    while path.name != 'data':
-        if path.parent == path:
-            return None
-        path = path.parent
-    relative_path = original_path.relative_to(path)
-    return relative_path
-
-
 def remove_boundary(data, boundary):
     tmp = data.split(b'\r\n--' + boundary.encode() + b'--\r\n')
     res = tmp[0]
@@ -55,14 +44,31 @@ def remove_boundary(data, boundary):
 def remove_double_boundary(data, boundary):
     tmp = data.split(b'\r\n--' + boundary.encode() + b'--\r\n')
     return tmp[0].split(b'\r\n\r\n', 1)[1]
-    # res = tmp[1]
-    # filename = tmp[0].split(b'filename="', 1)[1].split(b'"', 1)[0].decode()
-    # return res, filename
 
 
 def get_boundary(request):
     boundary = request.header.fields.get('Content-Type').split('boundary=')[1]
     return boundary
+
+
+def build_header_only_response(dir_path, headers, request):
+    file_path = Path(str(dir_path) + str(request.url))
+    if file_path.is_dir():
+        headers['Content-Length'] = str(len('Directory'))
+        return HTTP.build_response(200, 'OK', headers, 'Directory')
+    elif file_path.is_file():
+        content_type = 'application/octet-stream'
+        content_disposition = f'attachment; filename="{file_path.name}"'
+        if file_path.name.endswith('favicon.ico'):
+            content_type = 'image/x-icon'
+        file_length = Path(file_path).stat().st_size
+        headers['Content-Type'] = content_type
+        headers['Content-Length'] = str(file_length)
+        headers['Content-Disposition'] = content_disposition
+        return HTTP.build_response(200, 'OK', headers)
+    else:
+        headers['Content-Length'] = str(len('File Not Found'))
+        return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
 
 
 class File_Manager:
@@ -139,7 +145,7 @@ class File_Manager:
                 return None
             elif request.header.fields.get('Content-Type', '').startswith('multipart/form-data'):
                 request.body_without_boundary = remove_double_boundary(request.body,
-                                                                                         get_boundary(request))
+                                                                       get_boundary(request))
         try:
             username = ['']
             auth_header = request.header.fields.get('Authorization')
@@ -229,11 +235,8 @@ class File_Manager:
                         return HTTP.build_response(200, 'OK', headers, out)
 
                 elif file_path.is_file():
-                    # content_type = 'application/octet-stream'
                     content_type = mimetypes.guess_type(file_path)[0]
                     content_disposition = f'attachment; filename="{file_path.name}"'
-                    # if file_path.name.endswith('favicon.ico'):
-                    #     content_type = 'image/x-icon'
                     file_length = Path(file_path).stat().st_size
                     if file_length > 1024 * 1024 * 10 or CHUNKED_MODE:
                         headers['Transfer-Encoding'] = 'chunked'
@@ -265,23 +268,7 @@ class File_Manager:
 
             elif request.method == 'POST':
                 if "?" not in request.url:
-                    file_path = Path(str(dir_path) + str(request.url))
-                    if file_path.is_dir():
-                        headers['Content-Length'] = str(len('Directory'))
-                        return HTTP.build_response(200, 'OK', headers, 'Directory')
-                    elif file_path.is_file():
-                        content_type = 'application/octet-stream'
-                        content_disposition = f'attachment; filename="{file_path.name}"'
-                        if file_path.name.endswith('favicon.ico'):
-                            content_type = 'image/x-icon'
-                        file_length = Path(file_path).stat().st_size
-                        headers['Content-Type'] = content_type
-                        headers['Content-Length'] = str(file_length)
-                        headers['Content-Disposition'] = content_disposition
-                        return HTTP.build_response(200, 'OK', headers)
-                    else:
-                        headers['Content-Length'] = str(len('File Not Found'))
-                        return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
+                    return build_header_only_response(dir_path, headers, request)
                 method, relative_path = request.url.split('?', 1)
                 path_flag, relative_path = relative_path.split('=', 1)
                 print(f"relative_path: {relative_path}")
@@ -341,23 +328,7 @@ class File_Manager:
                     return HTTP.build_response(400, 'Bad Request', headers, 'Bad Request')
 
             elif request.method == 'HEAD':
-                file_path = Path(str(dir_path) + str(request.url))
-                if file_path.is_dir():
-                    headers['Content-Length'] = str(len('Directory'))
-                    return HTTP.build_response(200, 'OK', headers, 'Directory')
-                elif file_path.is_file():
-                    content_type = 'application/octet-stream'
-                    content_disposition = f'attachment; filename="{file_path.name}"'
-                    if file_path.name.endswith('favicon.ico'):
-                        content_type = 'image/x-icon'
-                    file_length = Path(file_path).stat().st_size
-                    headers['Content-Type'] = content_type
-                    headers['Content-Length'] = str(file_length)
-                    headers['Content-Disposition'] = content_disposition
-                    return HTTP.build_response(200, 'OK', headers)
-                else:
-                    headers['Content-Length'] = str(len('File Not Found'))
-                    return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
+                return build_header_only_response(dir_path, headers, request)
 
             else:
                 headers['Content-Length'] = str(len('Method Not Allowed'))

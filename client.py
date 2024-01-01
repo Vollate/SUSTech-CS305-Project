@@ -15,7 +15,7 @@ class Client:
         self.cipher = AES.new(key, AES.MODE_EAX)
 
     def send_get(self, file_path):
-        msg = f"GET {file_path} HTTP/1.1\r\nAuthorization: Basic MTIzOjEyMw==\r\nContent-Length: 0\r\n\r\n\r\n\r\n"
+        msg = f"GET {file_path} HTTP/1.1\r\nAuthorization: Basic Y2xpZW50MToxMjM=\r\nContent-Length: 0\r\n\r\n\r\n\r\n"
         self.conn.send(self.encrypt_msg(msg).encode())
 
     def upload(self, local_path, file_path):
@@ -32,13 +32,13 @@ class Client:
             + f"\r\n--{boundary}--\r\n".encode()
         )
         msg = (
-            f"POST /upload?path={file_path} HTTP/1.1\r\nAuthorization: Basic MTIzOjEyMw==\r\nContent-Length: {len(body)}\r\nContent-Type: multipart/form-data; boundary={boundary}\r\n\r\n".encode()
+            f"POST /upload?path={file_path} HTTP/1.1\r\nAuthorization: Basic Y2xpZW50MToxMjM=\r\nContent-Length: {len(body)}\r\nContent-Type: multipart/form-data; boundary={boundary}\r\n\r\n".encode()
             + body
         )
         self.conn.send(self.encrypt_msg(msg, True).encode())
 
     def delete(self, file_path):
-        msg = f"POST /delete?path={file_path} HTTP/1.1\r\nAuthorization: Basic MTIzOjEyMw==\r\nContent-Length: 0\r\n\r\n\r\n\r\n"
+        msg = f"POST /delete?path={file_path} HTTP/1.1\r\nAuthorization: Basic Y2xpZW50MToxMjM=\r\nContent-Length: 0\r\n\r\n\r\n\r\n"
         self.conn.send(self.encrypt_msg(msg).encode())
 
     def handle_input(self):
