@@ -27,7 +27,7 @@ class SessionManager:
 
     def validate_session(self, cookie_data):
         session_id = cookie_data.split('=')[1]
-        if session_id is None or cookie_data.split('=')[0] != 'session_id':
+        if session_id is None or cookie_data.split('=')[0] != 'session-id':
             return False
         session_data = self.sessions.get(session_id)
         if session_data:
