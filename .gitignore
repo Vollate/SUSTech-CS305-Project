@@ -163,4 +163,4 @@ cython_debug/
 .cache/
 
 
-.DS_STORE
+.DS_Store

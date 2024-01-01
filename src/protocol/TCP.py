@@ -17,6 +17,7 @@ def establish_encrypted_connection(socket_conn):
     )
     socket_conn.send(pem)
     encrypted_symmetric_key = socket_conn.recv(1024)
+    print('Successfully establish encrypted connection')
     return private_key.decrypt(
         encrypted_symmetric_key,
         padding.OAEP(
@@ -81,7 +82,7 @@ class TCPServer:
         with client_socket:
             key = establish_encrypted_connection(client_socket) if self.encrypt_enable else None
             while not status.oneshot or status.receive_partially:
-                data = client_socket.recv(10240000000)
+                data = client_socket.recv(102400000)
                 if not data:
                     break
                 if self.encrypt_enable:

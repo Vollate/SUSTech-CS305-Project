@@ -61,7 +61,7 @@
         var form = document.getElementById('uploadForm');
         var fileInput = document.getElementById('file');
         var filename = fileInput.getAttribute('data-filename');
-        form.action = '/upload?path={{title}}/' + encodeURIComponent(filename);
+        form.action = '/upload?path={{title}}/';
     }
 </script>
 
