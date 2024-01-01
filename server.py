@@ -17,6 +17,8 @@ argv = parser.parse_args()
 
 base_path = Path(__file__).resolve().parent
 fm = FileManager.File_Manager(base_path)
+if argv.e:
+    print("encryption enabled")
 tcp_server = TCP.TCPServer(argv.i, argv.p, ThreadPool.ThreadPool(1000), fm, argv.e)
 
 

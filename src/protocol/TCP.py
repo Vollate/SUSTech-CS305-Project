@@ -17,6 +17,7 @@ def establish_encrypted_connection(socket_conn):
     )
     socket_conn.send(pem)
     encrypted_symmetric_key = socket_conn.recv(1024)
+    print('Successfully establish encrypted connection')
     return private_key.decrypt(
         encrypted_symmetric_key,
         padding.OAEP(

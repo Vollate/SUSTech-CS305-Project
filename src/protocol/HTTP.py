@@ -41,7 +41,7 @@ class HTTP_Request:
         self.method, self.url, self.http_version = request_line.split(' ', 2)
         self.header = http_header(header_body[1].decode())
         self.body = parts[1]
-        if b"\r\n\r\n" in parts[1]:
+        if b"\r\n\r\n" != parts[1] and b"\r\n\r\n" in parts[1]:
             tmp = parts[1].split(b"\r\n\r\n", 1)
             self.body_without_boundary = tmp[1]
             self.filename = tmp[0].split(b'filename="')[1].split(b'"')[0].decode()
