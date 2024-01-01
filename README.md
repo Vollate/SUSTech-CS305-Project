@@ -1,4 +1,10 @@
-# SUSTech-CS305-Project
+# C305 Http Server
+
+## Requirement
+
+```sh
+pip install -r requirements.txt
+```
 
 ## Basic
 
@@ -8,7 +14,7 @@
 
 ### Encryption
 
-先运行运行根目录下 `server.sh`, 然后运行 `client.sh`
+先运行运行根目录下 `./encrypted_server.sh`, 然后运行 `./encrypted_client.sh`
 
 client 指令说明:
 
@@ -17,3 +23,6 @@ client 指令说明:
   - upload: 分别输入本地文件路径和上传到服务器的路径
   - delete：输入要删除文件的服务器路径
 
+### Breakpoint Transmission
+
+开个浏览器下载然后暂停
