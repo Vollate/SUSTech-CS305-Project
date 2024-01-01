@@ -7,6 +7,8 @@ import base64
 
 from src.protocol import HTTP
 
+MAX_MSG_SIZE = int(1024 * 1024 * 1024 * 1.8)
+
 
 def establish_encrypted_connection(socket_conn):
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -50,7 +52,12 @@ def send_encrypted_message(key, socket_conn, msg):
 def send_msg(socket_conn, msg):
     if type(msg) is tuple:
         socket_conn.send(msg[0].encode())
-        socket_conn.send(msg[1])
+        if len(msg[1]) > MAX_MSG_SIZE:
+            for i in range(len(msg[1]) // MAX_MSG_SIZE):
+                socket_conn.send(msg[1][i * MAX_MSG_SIZE:(i + 1) * MAX_MSG_SIZE])
+            socket_conn.send(msg[1][(len(msg[1]) // MAX_MSG_SIZE) * MAX_MSG_SIZE:])
+        else:
+            socket_conn.send(msg[1])
     else:
         socket_conn.send(msg.encode())
 
