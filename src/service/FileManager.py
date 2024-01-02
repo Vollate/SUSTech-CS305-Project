@@ -57,10 +57,8 @@ def build_header_only_response(dir_path, headers, request):
         headers['Content-Length'] = str(len('Directory'))
         return HTTP.build_response(200, 'OK', headers, 'Directory')
     elif file_path.is_file():
-        content_type = 'application/octet-stream'
+        content_type = mimetypes.guess_type(file_path)[0]
         content_disposition = f'attachment; filename="{file_path.name}"'
-        if file_path.name.endswith('favicon.ico'):
-            content_type = 'image/x-icon'
         file_length = Path(file_path).stat().st_size
         headers['Content-Type'] = content_type
         headers['Content-Length'] = str(file_length)
@@ -213,7 +211,8 @@ class File_Manager:
                 if relative_path is None:
                     headers['Content-Length'] = str(len('File Not Found'))
                     return HTTP.build_response(404, 'Not Found', headers, 'File Not Found')
-
+                if file_path.name == 'favicon.ico':
+                    file_path = self.base_path / 'templates/favicon.ico'
                 if file_path.is_dir():
                     files_and_dirs = list(file_path.iterdir())
 
