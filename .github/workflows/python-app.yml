@@ -37,6 +37,6 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        python server_breakpoint.py -i 127.0.0.1 -p 11451&
+        python server_breakpoint.py -i 127.0.0.1 -p 47451 &
         python -m pytest
 
